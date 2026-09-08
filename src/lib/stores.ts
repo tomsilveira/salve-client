@@ -1,0 +1,71 @@
+import { writable, type Writable } from 'svelte/store';
+import type { User, ServerInfo, Server, Channel, Category, ChannelWithCategory, Message, Friend, LiveStream, NewsItem, ServerCustomization } from './types';
+
+export const user: Writable<User | null> = writable(null);
+export const token: Writable<string | null> = writable(null);
+export const servers: Writable<Server[]> = writable([]);
+export const currentServer: Writable<Server | null> = writable(null);
+export const currentChannel: Writable<Channel | null> = writable(null);
+export const messages: Writable<Message[]> = writable([]);
+export const channelTree: Writable<{ categories: Category[]; channels: Channel[] }> = writable({ categories: [], channels: [] });
+export const connectedPeers: Writable<Map<string, any>> = writable(new Map());
+export const activeTab: Writable<'room' | 'friends' | 'communities' | 'lives' | 'settings'> = writable('communities');
+export const friends: Writable<Friend[]> = writable([]);
+export const liveStreams: Writable<LiveStream[]> = writable([]);
+export const news: Writable<NewsItem[]> = writable([]);
+export const serverCustomization: Writable<ServerCustomization | null> = writable(null);
+export const viewMode: Writable<'tabs' | 'server'> = writable('tabs');
+export const refreshMembers = writable(0);
+export const globalVoiceUsers = writable<Map<string, any[]>>(new Map());
+export const localVoiceStream = writable<MediaStream | null>(null);
+export const activeVoiceChannel: Writable<Channel | null> = writable(null);
+export const voiceLeaveFn: Writable<(() => void) | null> = writable(null);
+export const remoteScreenStreams: Writable<Map<string, MediaStream>> = writable(new Map());
+
+const storedNoiseSuppression = typeof window !== 'undefined'
+  ? localStorage.getItem('salve_noise_suppression') !== 'false'
+  : true;
+export const noiseSuppressionEnabled: Writable<boolean> = writable(storedNoiseSuppression);
+noiseSuppressionEnabled.subscribe((v) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('salve_noise_suppression', String(v));
+  }
+});
+
+export const isAuthenticated = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const t = localStorage.getItem('salve_token');
+  return !!t;
+};
+
+export const loadAuth = () => {
+  if (typeof window !== 'undefined') {
+    try {
+      const t = localStorage.getItem('salve_token');
+      const u = localStorage.getItem('salve_user');
+      if (t) token.set(t);
+      if (u) user.set(JSON.parse(u));
+    } catch {
+      clearAuth();
+    }
+  }
+};
+
+export const saveAuth = (t: string, u: User) => {
+  console.log('saveAuth token:', t.substring(0, 30) + '...');
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('salve_token', t);
+    localStorage.setItem('salve_user', JSON.stringify(u));
+  }
+  token.set(t);
+  user.set(u);
+};
+
+export const clearAuth = () => {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('salve_token');
+    localStorage.removeItem('salve_user');
+  }
+  token.set(null);
+  user.set(null);
+};
