@@ -464,7 +464,7 @@
           <div class="sidebar-member">
             <div class="sidebar-member-avatar">
               {#if member.user?.avatarUrl}
-                <img src="{getUploadUrl(member.user.avatarUrl)}?t={Date.now()}" alt={member.user.username} />
+                <img src="{getAvatarDisplayUrl(member.user.avatarUrl)}" alt={member.user.username} />
               {:else}
                 <span>{member.user?.username?.[0]?.toUpperCase() || '?'}</span>
               {/if}
