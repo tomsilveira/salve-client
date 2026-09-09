@@ -7,6 +7,7 @@ import { micState } from './lib/micState';
 import { getUploadUrl } from './lib/api';
 import { startMicrophoneAnalysis, stopMicrophoneAnalysis, isSpeaking } from './lib/microphone';
 import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
+import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScreenStream, getScreenStream as getSharedScreenStream, getAudioContext, setAudioContext as setSharedAudioContext, getMixedAudioDestination, setMixedAudioDestination as setSharedMixedAudioDest } from './lib/peerState';
 
   const {
     channel,
@@ -35,8 +36,8 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
   let showLiveModal = $state(false);
   let hasAudioTrack = $state(false);
   let hasVideoTrack = $state(false);
-  const peerConnections: Map<string, RTCPeerConnection> = new Map();
-  const remoteStreams: Map<string, MediaStream> = new Map();
+  const peerConnections = getPeerConnections();
+  const remoteStreams = getRemoteStreams();
 
   // TURN server host: in dev uses backend host; in production, extract from VITE_API_URL.
   // NOTE: Render does not expose arbitrary ports (3478), so TURN won't work there.
@@ -511,14 +512,14 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
     console.log('Received signal', offer);
   }
 
-  let screenStream: MediaStream | null = null;
+  let screenStream = $state(getSharedScreenStream());
   const remoteScreenStreams: Map<string, MediaStream> = $state(new Map());
   let screenUpdateCounter = $state(0);
   let videoEls: Record<string, HTMLVideoElement> = $state({});
   let featuredScreen: string | null = $state(null);
   let screenAudioActive = $state(false);
-  let audioContext: AudioContext | null = null;
-  let mixedAudioDestination: MediaStreamAudioDestinationNode | null = null;
+  let audioContext: AudioContext | null = $state(getAudioContext());
+  let mixedAudioDestination: MediaStreamAudioDestinationNode | null = $state(getMixedAudioDestination());
 
   function syncScreenStreamsToStore() {
     remoteScreenStreamsStore.set(new Map(remoteScreenStreams));
@@ -531,12 +532,15 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
 
     if (!audioContext) {
       audioContext = new AudioContext();
+      setSharedAudioContext(audioContext);
     }
     if (mixedAudioDestination) {
       mixedAudioDestination.disconnect();
       mixedAudioDestination = null;
+      setSharedMixedAudioDest(null);
     }
     mixedAudioDestination = audioContext.createMediaStreamDestination();
+    setSharedMixedAudioDest(mixedAudioDestination);
 
     const micSource = audioContext.createMediaStreamSource($localVoiceStream);
     micSource.connect(mixedAudioDestination);
@@ -552,10 +556,12 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
     if (mixedAudioDestination) {
       mixedAudioDestination.disconnect();
       mixedAudioDestination = null;
+      setSharedMixedAudioDest(null);
     }
     if (audioContext && audioContext.state !== 'closed') {
       audioContext.close();
       audioContext = null;
+      setSharedAudioContext(null);
     }
   }
 
@@ -566,6 +572,7 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
     }
     try {
       screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      setSharedScreenStream(screenStream);
       screenAudioActive = screenStream.getAudioTracks().length > 0;
       console.log('[ScreenShare] Audio tracks:', screenStream.getAudioTracks().length, 'audio active:', screenAudioActive);
       screenSharing = true;
@@ -628,6 +635,7 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
     if (screenStream) {
       screenStream.getTracks().forEach(t => t.stop());
       screenStream = null;
+      setSharedScreenStream(null);
     }
     screenSharing = false;
     screenAudioActive = false;
