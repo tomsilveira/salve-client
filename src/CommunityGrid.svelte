@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { api, getUploadUrl } from './lib/api';
-import { servers, currentServer, currentChannel, channelTree, viewMode, friends } from './lib/stores';
+import { servers, currentServer, currentChannel, channelTree, viewMode, friends, user } from './lib/stores';
 import type { Server, Friend, ServerMember } from './lib/types';
 import CreateServerModal from './CreateServerModal.svelte';
 
@@ -191,7 +191,23 @@ const friendList = $derived($friends);
   </div>
 
   <div class="friends-sidebar">
-    <div class="friends-header">
+    {#if $user}
+      <div class="user-card">
+        <div class="user-card-avatar">
+          {#if $user.avatarUrl}
+            <img src={getUploadUrl($user.avatarUrl)} alt={$user.username} />
+          {:else}
+            <span>{$user.username?.[0]?.toUpperCase() || '?'}</span>
+          {/if}
+          <div class="user-card-status" class:online={$user.status === 'online'} class:away={$user.status === 'away'} class:dnd={$user.status === 'do-not-disturb'} class:offline={$user.status === 'offline' || $user.status === 'invisible'}></div>
+        </div>
+        <div class="user-card-info">
+          <span class="user-card-name">{$user.username}</span>
+          <span class="user-card-email">{$user.email}</span>
+        </div>
+      </div>
+    {/if}
+    <div class="friends-divider">
       <span>Amigos — {friendList.length}</span>
     </div>
     <div class="friends-list">
@@ -272,6 +288,84 @@ const friendList = $derived($friends);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     border-bottom: 1px solid #2a2b2f;
+  }
+
+  .user-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #2a2b2f;
+  }
+
+  .user-card-avatar {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 50% 50% 15% 50%;
+    background: #2a2b2f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    color: #0099ff;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .user-card-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .user-card-status {
+    position: absolute;
+    bottom: 2px;
+    right: 0px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2.5px solid #111116;
+  }
+
+  .user-card-status.online { background: #00ff88; }
+  .user-card-status.away { background: #ffd700; }
+  .user-card-status.dnd { background: #ff454a; }
+  .user-card-status.offline { background: #5a5a6a; }
+
+  .user-card-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .user-card-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e4e6eb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .user-card-email {
+    font-size: 11px;
+    color: #8e9297;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .friends-divider {
+    padding: 12px 16px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #8e9297;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .friends-list {
