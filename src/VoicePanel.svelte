@@ -245,10 +245,17 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
         try {
           console.log('Received answer SDP has video:', signal.data?.sdp?.includes('m=video'));
           await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
-        } catch (e) {
-          console.error('Failed to set remote answer from', from, e);
-          pc.close();
-          peerConnections.delete(from);
+        } catch (e: any) {
+          console.warn('[Signal] Failed to set remote answer, retrying with ICE restart:', e.message);
+          try {
+            const offer = await pc.createOffer({ iceRestart: true });
+            await pc.setLocalDescription(offer);
+            signalClient?.sendSignal(from, channelId, { type: 'offer', offer });
+          } catch (e2) {
+            console.error('[Signal] ICE restart renegotiation failed, closing PC:', e2);
+            pc.close();
+            peerConnections.delete(from);
+          }
         }
       } else if (pc) {
         console.warn('Ignoring answer from', from, '- PC state:', pc.signalingState);
@@ -600,11 +607,18 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
 
   async function renegotiate(peerId: string, pc: RTCPeerConnection) {
     try {
-      const offer = await pc.createOffer();
+      const offer = await pc.createOffer({ iceRestart: false });
       await pc.setLocalDescription(offer);
       signalClient?.sendSignal(peerId, channel.id, { type: 'offer', offer });
-    } catch (e) {
-      console.error('Renegotiation failed', e);
+    } catch (e: any) {
+      console.warn('[Renegotiate] Offer failed, retrying with ICE restart:', e.message);
+      try {
+        const offer = await pc.createOffer({ iceRestart: true });
+        await pc.setLocalDescription(offer);
+        signalClient?.sendSignal(peerId, channel.id, { type: 'offer', offer });
+      } catch (e2) {
+        console.error('Renegotiation failed even with ICE restart', e2);
+      }
     }
   }
 
