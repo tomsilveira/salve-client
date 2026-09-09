@@ -779,9 +779,6 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       $localVoiceStream.getTracks().forEach((t) => t.stop());
       localVoiceStream.set(null);
     }
-    if (signalClient) {
-      signalClient.leaveVoice(channel.id);
-    }
     onLeave();
   }
 
@@ -798,6 +795,10 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     if (!signalClient) return;
     console.log('[VoicePanel] setupCallbacks called, joined:', joined, 'channel:', channel.id);
     signalClient.onPeerJoined = async (peer: VoicePeer) => {
+      if (peer.userId === userId) {
+        console.log('[VoicePanel] Ignoring self voice-joined');
+        return;
+      }
       const currentJoined = joined;
       console.log('[VoicePanel] onPeerJoined:', peer.username, 'userId:', peer.userId, 'localUserId:', userId, 'isInitiator:', userId < peer.userId, 'joined:', currentJoined);
       connectedPeers.update((m) => {
