@@ -303,8 +303,8 @@ import { getUploadUrl } from './lib/api';
 
   .member-status-dot {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
+    bottom: 4%;
+    right: 4%;
     width: 6px;
     height: 6px;
     border-radius: 50%;

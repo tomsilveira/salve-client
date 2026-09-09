@@ -784,7 +784,7 @@
     position: relative;
     width: 36px;
     height: 36px;
-    border-radius: 50%;
+    border-radius: 50% 50% 15% 50%;
     overflow: hidden;
     flex-shrink: 0;
     background: #2a2b2f;
@@ -809,8 +809,8 @@
 
   .sidebar-user-status {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
+    bottom: 4%;
+    right: 4%;
     width: 12px;
     height: 12px;
     border-radius: 50%;
@@ -866,7 +866,7 @@
     position: relative;
     width: 32px;
     height: 32px;
-    border-radius: 50%;
+    border-radius: 50% 50% 15% 50%;
     overflow: hidden;
     flex-shrink: 0;
     background: #2a2b2f;
@@ -891,8 +891,8 @@
 
   .sidebar-member-status {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
+    bottom: 4%;
+    right: 4%;
     width: 10px;
     height: 10px;
     border-radius: 50%;
@@ -1027,8 +1027,8 @@
 
   .user-status-dot {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
+    bottom: 4%;
+    right: 4%;
     width: 10px;
     height: 10px;
     border-radius: 50%;

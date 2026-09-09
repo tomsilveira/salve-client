@@ -1296,8 +1296,8 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
 
   .preview-card-status {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
+    bottom: 4%;
+    right: 4%;
     width: 10px;
     height: 10px;
     border-radius: 50%;
@@ -1477,8 +1477,8 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
 
   .voice-user-status {
     position: absolute;
-    bottom: -2px;
-    right: -2px;
+    bottom: 4%;
+    right: 4%;
     width: 16px;
     height: 16px;
     border-radius: 50%;
@@ -1732,13 +1732,13 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
   .screen-placeholder-avatar img {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
+    border-radius: 50% 50% 15% 50%;
     object-fit: cover;
   }
   .screen-placeholder-avatar .avatar-letter {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
+    border-radius: 50% 50% 15% 50%;
     background: #0099ff;
     color: white;
     display: flex;

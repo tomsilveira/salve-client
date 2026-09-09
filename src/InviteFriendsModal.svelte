@@ -217,8 +217,8 @@ import { getUploadUrl } from './lib/api';
 
   .friend-status-dot {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
+    bottom: 4%;
+    right: 4%;
     width: 10px;
     height: 10px;
     border-radius: 50%;

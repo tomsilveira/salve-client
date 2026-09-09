@@ -229,7 +229,7 @@
   .placeholder-avatar .avatar-letter {
     width: 100%;
     height: 100%;
-    border-radius: 50%;
+    border-radius: 50% 50% 15% 50%;
     object-fit: cover;
     display: flex;
     align-items: center;

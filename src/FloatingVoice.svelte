@@ -186,14 +186,14 @@
   .avatar-img {
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: 50% 50% 15% 50%;
     object-fit: cover;
   }
 
   .avatar-placeholder {
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: 50% 50% 15% 50%;
     background: #0099ff;
     color: white;
     display: flex;
@@ -205,8 +205,8 @@
 
   .status-dot {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
+    bottom: 4%;
+    right: 4%;
     width: 10px;
     height: 10px;
     border-radius: 50%;

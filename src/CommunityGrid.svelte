@@ -321,8 +321,8 @@ const friendList = $derived($friends);
 
   .user-card-status {
     position: absolute;
-    bottom: 2px;
-    right: 0px;
+    bottom: 4%;
+    right: 4%;
     width: 12px;
     height: 12px;
     border-radius: 50%;
