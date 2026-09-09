@@ -16,6 +16,7 @@ export class SignalClient {
   public onAllVoiceStates: (states: Record<string, any[]>) => void = () => {};
   public onLiveStart: (data: { liveId: string; userId: string; username: string; avatarUrl: string; title: string; gameName: string; channelId: string }) => void = () => {};
   public onLiveStop: (liveId: string) => void = () => {};
+  public onSpeaking: (channelId: string, userId: string, speaking: boolean) => void = () => {};
 
   private pendingMessages: any[] = [];
 
@@ -130,6 +131,9 @@ export class SignalClient {
       case 'live-stop':
         this.onLiveStop(msg.liveId);
         break;
+      case 'speaking':
+        this.onSpeaking(msg.target, msg.userId, msg.speaking);
+        break;
     }
   }
 
@@ -162,6 +166,10 @@ export class SignalClient {
 
   leaveVoice(channelId: string) {
     this.send({ type: 'voice-leave', target: channelId });
+  }
+
+  sendSpeaking(channelId: string, speaking: boolean) {
+    this.send({ type: 'speaking', target: channelId, speaking });
   }
 
   sendSignal(to: string, channelId: string, signal: any) {

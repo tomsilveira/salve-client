@@ -21,6 +21,7 @@ export const localVoiceStream = writable<MediaStream | null>(null);
 export const activeVoiceChannel: Writable<Channel | null> = writable(null);
 export const voiceLeaveFn: Writable<(() => void) | null> = writable(null);
 export const remoteScreenStreams: Writable<Map<string, MediaStream>> = writable(new Map());
+export const speakingUsers: Writable<Set<string>> = writable(new Set());
 
 const storedNoiseSuppression = typeof window !== 'undefined'
   ? localStorage.getItem('salve_noise_suppression') !== 'false'

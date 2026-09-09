@@ -2,7 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import type { Channel, VoicePeer } from './lib/types';
   import type { SignalClient } from './lib/signal';
-import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, remoteScreenStreams as remoteScreenStreamsStore } from './lib/stores';
+import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers } from './lib/stores';
 import { micState } from './lib/micState';
 import { getUploadUrl } from './lib/api';
 import { startMicrophoneAnalysis, stopMicrophoneAnalysis, isSpeaking } from './lib/microphone';
@@ -850,6 +850,17 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
       console.log('[VoicePanel] onLiveStop:', liveId);
       liveStreams.update((streams) => streams.filter(s => s.id !== liveId));
     };
+    signalClient.onSpeaking = (channelId: string, userId: string, speaking: boolean) => {
+      speakingUsers.update((set) => {
+        const newSet = new Set(set);
+        if (speaking) {
+          newSet.add(userId);
+        } else {
+          newSet.delete(userId);
+        }
+        return newSet;
+      });
+    };
   }
 
    $effect(() => {
@@ -863,6 +874,15 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
     } else if (!isJoined) {
       stopMicrophoneAnalysis();
       cleanupPeerConnections();
+    }
+  });
+
+  $effect(() => {
+    const speaking = $isSpeaking;
+    const sc = signalClient;
+    const ch = channel;
+    if (sc && ch) {
+      sc.sendSpeaking(ch.id, speaking);
     }
   });
 
@@ -920,8 +940,9 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
         </div>
         {#each voiceUsers.filter((u: any) => u.id !== userId) as user (user.id)}
           {@const userStatus = user.status || statusMap.get(user.id) || 'online'}
+          {@const isUserSpeaking = $speakingUsers.has(user.id)}
           <div class="voice-user-card">
-            <div class="voice-user-avatar" title={user.username}>
+            <div class="voice-user-avatar" class:speaking={isUserSpeaking} title={user.username}>
               {#if user.avatarUrl}
                 <img src="{getUploadUrl(user.avatarUrl)}?t={Date.now()}" alt={user.username} />
               {:else}
