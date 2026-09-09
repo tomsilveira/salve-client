@@ -31,8 +31,8 @@
     uploading = true;
     try {
       const res = await api.uploadUserAvatar(avatarFile);
-      user.avatarUrl = res.avatarUrl;
-      userStore.set({ ...user });
+      const updatedUser = { ...user, avatarUrl: res.avatarUrl };
+      userStore.set(updatedUser);
       refreshMembers.update((n) => n + 1);
       avatarFile = null;
       avatarPreview = '';

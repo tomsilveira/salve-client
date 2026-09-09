@@ -358,7 +358,8 @@
     uploadingServerImage = true;
     try {
       const res = await api.uploadServerIcon(selectedServer.id, serverImageFile);
-      selectedServer.iconUrl = res.iconUrl;
+      selectedServer = { ...selectedServer, iconUrl: res.iconUrl };
+      currentServer.set(selectedServer);
       serverImageFile = null;
     } catch (e) {
       console.error('Failed to upload server image', e);
