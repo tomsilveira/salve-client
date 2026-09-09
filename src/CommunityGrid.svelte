@@ -203,7 +203,6 @@ const friendList = $derived($friends);
         </div>
         <div class="user-card-info">
           <span class="user-card-name">{$user.username}</span>
-          <span class="user-card-email">{$user.email}</span>
         </div>
       </div>
     {/if}
@@ -346,14 +345,6 @@ const friendList = $derived($friends);
     font-size: 14px;
     font-weight: 600;
     color: #e4e6eb;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .user-card-email {
-    font-size: 11px;
-    color: #8e9297;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
