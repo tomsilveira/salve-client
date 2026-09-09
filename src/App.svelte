@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { loadAuth, user, activeTab, viewMode, currentServer, activeVoiceChannel, liveStreams } from './lib/stores';
+  import { loadAuth, clearAuth, user, activeTab, viewMode, currentServer, activeVoiceChannel, liveStreams } from './lib/stores';
   import { api, API_BASE } from './lib/api';
   import Login from './Login.svelte';
   import MainLayout from './MainLayout.svelte';
@@ -37,7 +37,10 @@
     if ($user) {
       api.getMe().then((me) => {
         user.set({ ...$user!, avatarUrl: me.avatarUrl || '', status: me.status || 'online' });
-      }).catch(() => {});
+      }).catch(() => {
+        clearAuth();
+        window.location.reload();
+      });
     }
     const params = new URLSearchParams(window.location.search);
     const code = params.get('invite');
