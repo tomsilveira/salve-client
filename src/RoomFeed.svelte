@@ -198,7 +198,8 @@
     if (u) {
       const updated = { ...u, username: nickname, status, animatedBorder };
       user.set(updated);
-      localStorage.setItem('salve_user', JSON.stringify(updated));
+      const safeUser = { id: updated.id, username: updated.username, email: updated.email, status: updated.status, createdAt: updated.createdAt };
+      localStorage.setItem('salve_user', JSON.stringify(safeUser));
     }
     customization = { ...customization, wallColor, backgroundImage: backgroundPreview || '' };
     localStorage.setItem('salve_room_customization', JSON.stringify(customization));

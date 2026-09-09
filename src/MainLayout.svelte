@@ -255,6 +255,11 @@
     const u = get(user);
     if (!u) return;
 
+    // Leave current voice channel first if switching
+    if (activeVoiceChannel && activeVoiceChannel.id !== channel.id) {
+      handleLeaveVoice();
+    }
+
     if (!signalClient) {
       initGlobalSignal();
     }

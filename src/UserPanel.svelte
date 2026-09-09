@@ -32,8 +32,7 @@
     try {
       const res = await api.uploadUserAvatar(avatarFile);
       user.avatarUrl = res.avatarUrl;
-      userStore.set(user);
-      localStorage.setItem('salve_user', JSON.stringify(user));
+      userStore.set({ ...user });
       refreshMembers.update((n) => n + 1);
       avatarFile = null;
       avatarPreview = '';
@@ -49,7 +48,8 @@
     user.status = statusId;
     const updatedUser = { ...user, status: statusId };
     userStore.set(updatedUser);
-    localStorage.setItem('salve_user', JSON.stringify(updatedUser));
+    const safeUser = { id: updatedUser.id, username: updatedUser.username, email: updatedUser.email, status: updatedUser.status, createdAt: updatedUser.createdAt };
+    localStorage.setItem('salve_user', JSON.stringify(safeUser));
     updatingStatus = true;
     try {
       await api.updateStatus(statusId);

@@ -113,10 +113,22 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
       const [remoteStream] = event.streams;
       const track = event.track;
       console.log('Remote track received:', track.kind, 'from:', peerId);
+      console.log('[VoicePanel] Remote track details:', {
+        kind: track.kind,
+        enabled: track.enabled,
+        muted: track.muted,
+        readyState: track.readyState,
+        id: track.id,
+        streamId: remoteStream?.id,
+        streamTrackCount: remoteStream?.getTracks().length,
+        streamAudioTracks: remoteStream?.getAudioTracks().length,
+        streamVideoTracks: remoteStream?.getVideoTracks().length,
+      });
 
       if (track.kind === 'audio') {
         remoteStreams.set(peerId, remoteStream);
         let audio = document.getElementById(`audio-${peerId}`) as HTMLAudioElement;
+        const existed = !!audio;
         if (!audio) {
           audio = document.createElement('audio');
           audio.id = `audio-${peerId}`;
@@ -125,6 +137,30 @@ import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
           document.body.appendChild(audio);
         }
         audio.srcObject = remoteStream;
+
+        console.log('[VoicePanel] Remote audio element:', {
+          id: audio.id,
+          existed,
+          paused: audio.paused,
+          muted: audio.muted,
+          volume: audio.volume,
+          readyState: audio.readyState,
+          autoplay: audio.autoplay,
+          playsInline: audio.playsInline,
+          srcObjectSet: !!audio.srcObject,
+          audioTracks: remoteStream.getAudioTracks().map(t => ({
+            enabled: t.enabled,
+            muted: t.muted,
+            readyState: t.readyState,
+            kind: t.kind,
+          })),
+        });
+
+        audio.play().then(() => {
+          console.log('[VoicePanel] Remote audio playback started for', peerId);
+        }).catch((e) => {
+          console.warn('[VoicePanel] Remote audio autoplay blocked:', e?.message || e);
+        });
       } else if (track.kind === 'video') {
         remoteScreenStreams.set(peerId, remoteStream);
         syncScreenStreamsToStore();

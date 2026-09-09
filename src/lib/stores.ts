@@ -55,7 +55,8 @@ export const saveAuth = (t: string, u: User) => {
   console.log('saveAuth token:', t.substring(0, 30) + '...');
   if (typeof window !== 'undefined') {
     localStorage.setItem('salve_token', t);
-    localStorage.setItem('salve_user', JSON.stringify(u));
+    const safeUser = { id: u.id, username: u.username, email: u.email, status: u.status, createdAt: u.createdAt };
+    localStorage.setItem('salve_user', JSON.stringify(safeUser));
   }
   token.set(t);
   user.set(u);

@@ -137,6 +137,9 @@ export const api = {
       body: JSON.stringify({ status }),
     }),
 
+  getMe: () =>
+    request<{ id: string; username: string; email: string; avatarUrl?: string; status?: string }>('/user/me'),
+
   reorderChannels: (serverId: string, channels: { id: string; position: number; categoryId?: string | null }[]) =>
     request<{ message: string }>(`/servers/${serverId}/channels/reorder`, {
       method: 'PUT',

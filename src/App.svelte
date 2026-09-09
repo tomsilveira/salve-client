@@ -34,6 +34,11 @@
 
   onMount(() => {
     loadAuth();
+    if ($user) {
+      api.getMe().then((me) => {
+        user.set({ ...$user!, avatarUrl: me.avatarUrl || '', status: me.status || 'online' });
+      }).catch(() => {});
+    }
     const params = new URLSearchParams(window.location.search);
     const code = params.get('invite');
     if (code) {
