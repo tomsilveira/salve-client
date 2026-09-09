@@ -1,3 +1,7 @@
+<svelte:head>
+  <link href="https://fonts.googleapis.com/css2?family=Yesteryear&display=swap" rel="stylesheet" />
+</svelte:head>
+
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { api } from './lib/api';
@@ -165,6 +169,7 @@
   }
 
   .logo-text {
+    font-family: 'Yesteryear', cursive;
     font-size: 32px;
     font-weight: 700;
     color: #0099ff;
