@@ -175,6 +175,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
             syncScreenStreamsToStore();
             screenUpdateCounter++;
             featuredScreen = featuredScreen === peerId ? null : featuredScreen;
+            cleanupRemoteAudio(peerId);
           }
         };
       }
@@ -270,6 +271,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         syncScreenStreamsToStore();
         screenUpdateCounter++;
         featuredScreen = featuredScreen === from ? null : featuredScreen;
+        cleanupRemoteAudio(from);
         console.log('[ScreenShare] Cleaned up remote screen for:', from);
       }
     } else if (signal.type === 'ice-candidate') {
@@ -523,6 +525,14 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
 
   function syncScreenStreamsToStore() {
     remoteScreenStreamsStore.set(new Map(remoteScreenStreams));
+  }
+
+  function cleanupRemoteAudio(peerId: string) {
+    const audio = document.getElementById(`audio-${peerId}`);
+    if (audio) {
+      (audio as HTMLAudioElement).srcObject = null;
+      audio.remove();
+    }
   }
 
   function getMixedAudioStream(): MediaStream | null {
@@ -1049,6 +1059,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
                   expandedScreens = new Set([...expandedScreens].filter(id => id !== peerId));
                   featuredScreen = featuredScreen === peerId ? null : featuredScreen;
                   screenUpdateCounter++;
+                  cleanupRemoteAudio(peerId);
                 }}
                 type="button"
                 title="Fechar"

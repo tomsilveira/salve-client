@@ -43,7 +43,6 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...(t ? { Authorization: `Bearer ${t}` } : {}),
     ...(options.headers || {}),
   };
-  console.log('API request:', path, 'token:', t ? `${t.substring(0, 20)}...` : 'null');
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {

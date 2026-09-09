@@ -39,7 +39,6 @@
         user.set({ ...$user!, avatarUrl: me.avatarUrl || '', status: me.status || 'online' });
       }).catch(() => {
         clearAuth();
-        window.location.reload();
       });
     }
     const params = new URLSearchParams(window.location.search);
