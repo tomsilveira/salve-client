@@ -26,7 +26,8 @@ export function getWsBaseUrl(): string {
 }
 
 export function getUploadUrl(path: string): string {
-  if (path.startsWith('http')) return path;
+  if (!path) return '';
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
   const origin = getOrigin();
   if (origin) {
     return `${origin}${path}`;
