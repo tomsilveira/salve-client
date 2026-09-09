@@ -36,6 +36,12 @@ export function getUploadUrl(path: string): string {
   return path;
 }
 
+export function getAvatarDisplayUrl(path: string): string {
+  const url = getUploadUrl(path);
+  if (!url || url.startsWith('data:')) return url;
+  return `${url}?t=${Date.now()}`;
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const t = get(token);
   const headers: HeadersInit = {

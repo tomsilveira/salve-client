@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  import { api, getUploadUrl } from './lib/api';
+  import { api, getUploadUrl, getAvatarDisplayUrl } from './lib/api';
   import { user, servers, currentServer, currentChannel, channelTree, connectedPeers, viewMode, refreshMembers, globalVoiceUsers, activeVoiceChannel as activeVoiceChannelStore, voiceLeaveFn, liveStreams } from './lib/stores';
   import type { Server, Channel, Category, Message, ServerMember } from './lib/types';
   import { SignalClient } from './lib/signal';
@@ -446,7 +446,7 @@
       <div class="sidebar-user-card" onclick={() => (showUserPanel = true)}>
         <div class="sidebar-user-avatar">
           {#if $user?.avatarUrl}
-            <img src="{getUploadUrl($user.avatarUrl)}?t={Date.now()}" alt={$user.username} />
+            <img src="{getAvatarDisplayUrl($user.avatarUrl)}" alt={$user.username} />
           {:else}
             <span>{$user?.username?.[0]?.toUpperCase() || '?'}</span>
           {/if}
@@ -508,7 +508,7 @@
               <div class="user-card">
                 <div class="user-card-avatar">
                   {#if voiceUser.avatarUrl}
-                    <img src="{getUploadUrl(voiceUser.avatarUrl)}?t={Date.now()}" alt={voiceUser.username} />
+                    <img src="{getAvatarDisplayUrl(voiceUser.avatarUrl)}" alt={voiceUser.username} />
                   {:else}
                     <span>{voiceUser.username?.[0]?.toUpperCase() || '?'}</span>
                   {/if}
@@ -525,7 +525,7 @@
               <div class="user-card">
                 <div class="user-card-avatar">
                    {#if member.user?.avatarUrl}
-                     <img src="{getUploadUrl(member.user.avatarUrl)}?t={Date.now()}" alt={member.user.username} />
+                <img src="{getAvatarDisplayUrl(member.user.avatarUrl)}" alt={member.user.username} />
                    {:else}
                      <span>{member.user?.username?.[0]?.toUpperCase() || '?'}</span>
                    {/if}

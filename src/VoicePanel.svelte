@@ -4,7 +4,7 @@
   import type { SignalClient } from './lib/signal';
 import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers } from './lib/stores';
 import { micState } from './lib/micState';
-import { getUploadUrl } from './lib/api';
+import { getUploadUrl, getAvatarDisplayUrl } from './lib/api';
 import { startMicrophoneAnalysis, stopMicrophoneAnalysis, isSpeaking } from './lib/microphone';
 import { RNNoiseProcessor, type AudioProcessor } from './lib/noiseSuppression';
 import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScreenStream, getScreenStream as getSharedScreenStream, getAudioContext, setAudioContext as setSharedAudioContext, getMixedAudioDestination, setMixedAudioDestination as setSharedMixedAudioDest } from './lib/peerState';
@@ -941,7 +941,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         <div class="voice-user-card local">
           <div class="voice-user-avatar local" class:speaking={$isSpeaking} title={username}>
             {#if currentUser?.avatarUrl}
-              <img src="{getUploadUrl(currentUser.avatarUrl)}?t={Date.now()}" alt={username} />
+              <img src="{getAvatarDisplayUrl(currentUser.avatarUrl)}" alt={username} />
             {:else}
               <span>{username?.[0]?.toUpperCase() || '?'}</span>
             {/if}
@@ -962,7 +962,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
           <div class="voice-user-card">
             <div class="voice-user-avatar" class:speaking={isUserSpeaking} title={user.username}>
               {#if user.avatarUrl}
-                <img src="{getUploadUrl(user.avatarUrl)}?t={Date.now()}" alt={user.username} />
+                <img src="{getAvatarDisplayUrl(user.avatarUrl)}" alt={user.username} />
               {:else}
                 <span>{user.username?.[0]?.toUpperCase() || '?'}</span>
               {/if}

@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
   import { news, serverCustomization, user, refreshMembers, clearAuth } from './lib/stores';
   import type { NewsItem, ServerCustomization, User } from './lib/types';
-  import { api, getUploadUrl } from './lib/api';
+  import { api, getUploadUrl, getAvatarDisplayUrl } from './lib/api';
 
   let newsItems: NewsItem[] = [];
   let loading = true;
@@ -238,7 +238,7 @@
     <div class="profile-card" class:animated-border={animatedBorder}>
       <div class="avatar-wrapper">
         {#if $user?.avatarUrl}
-          <img src="{getUploadUrl($user.avatarUrl)}?t={Date.now()}" alt="avatar" class="avatar-img" />
+          <img src="{getAvatarDisplayUrl($user.avatarUrl)}" alt="avatar" class="avatar-img" />
         {:else}
           <div class="avatar-placeholder">{$user?.username?.[0]?.toUpperCase() || '?'}</div>
         {/if}
