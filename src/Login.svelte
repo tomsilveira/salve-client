@@ -64,6 +64,7 @@
 <div class="login-container">
   <div class="login-card">
     <div class="logo">
+      <img src="/favicon.ico" alt="Salve" class="logo-icon" />
       <span class="logo-text">Salve</span>
     </div>
 
@@ -153,7 +154,14 @@
   .logo {
     display: flex;
     justify-content: center;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 24px;
+  }
+
+  .logo-icon {
+    width: 40px;
+    height: 40px;
   }
 
   .logo-text {
