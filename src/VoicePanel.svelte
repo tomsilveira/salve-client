@@ -3,7 +3,7 @@
   import { get } from 'svelte/store';
   import type { Channel, VoicePeer } from './lib/types';
   import type { SignalClient } from './lib/signal';
-import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, inputDeviceId, outputDeviceId, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers } from './lib/stores';
+import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, inputDeviceId, outputDeviceId, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers, screenShareStopFn } from './lib/stores';
 import { playScreenStartSound, playScreenStopSound } from './lib/sounds';
 import { micState } from './lib/micState';
 import { getUploadUrl, getAvatarDisplayUrl } from './lib/api';
@@ -602,6 +602,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       screenAudioActive = screenStream.getAudioTracks().length > 0;
       console.log('[ScreenShare] Audio tracks:', screenStream.getAudioTracks().length, 'audio active:', screenAudioActive);
       screenSharing = true;
+      screenShareStopFn.set(stopScreenShare);
       await tick();
       if (localScreen) {
         localScreen.srcObject = screenStream;
@@ -641,7 +642,8 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       }
     } catch (e) {
       console.error('Screen share failed', e);
-      screenSharing = false;
+    screenSharing = false;
+    screenShareStopFn.set(null);
     }
   }
 

@@ -20,6 +20,7 @@ export const globalVoiceUsers = writable<Map<string, any[]>>(new Map());
 export const localVoiceStream = writable<MediaStream | null>(null);
 export const activeVoiceChannel: Writable<Channel | null> = writable(null);
 export const voiceLeaveFn: Writable<(() => void) | null> = writable(null);
+export const screenShareStopFn: Writable<(() => void) | null> = writable(null);
 export const remoteScreenStreams: Writable<Map<string, MediaStream>> = writable(new Map());
 export const speakingUsers: Writable<Set<string>> = writable(new Set());
 

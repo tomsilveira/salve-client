@@ -4,7 +4,7 @@
   import { api, getUploadUrl, getAvatarDisplayUrl } from './lib/api';
   import { playJoinSound, playLeaveSound } from './lib/sounds';
   import UserContextMenu from './UserContextMenu.svelte';
-  import { user, servers, friends, currentServer, currentChannel, channelTree, connectedPeers, viewMode, refreshMembers, globalVoiceUsers, activeVoiceChannel as activeVoiceChannelStore, voiceLeaveFn, liveStreams } from './lib/stores';
+  import { user, servers, friends, currentServer, currentChannel, channelTree, connectedPeers, viewMode, refreshMembers, globalVoiceUsers, activeVoiceChannel as activeVoiceChannelStore, voiceLeaveFn, screenShareStopFn, liveStreams } from './lib/stores';
   import type { Server, Channel, Category, Message, ServerMember } from './lib/types';
   import { SignalClient } from './lib/signal';
   import ServerList from './ServerList.svelte';
@@ -358,6 +358,10 @@
   }
 
   function handleLeaveVoice() {
+    const stopScreen = get(screenShareStopFn);
+    if (stopScreen) {
+      stopScreen();
+    }
     if (activeVoiceChannel) {
       signalClient?.leaveVoice(activeVoiceChannel.id);
       api.leaveChannel(activeVoiceChannel.id);
@@ -365,6 +369,7 @@
     activeVoiceChannel = null;
     activeVoiceChannelStore.set(null);
     voiceLeaveFn.set(null);
+    screenShareStopFn.set(null);
     connectedPeers.set(new Map());
   }
 
