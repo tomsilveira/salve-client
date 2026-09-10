@@ -6,13 +6,14 @@ export class SignalClient {
   private username: string;
   private avatarUrl: string;
   private status: string;
+  private accentColor: string;
   public onPeerJoined: (peer: VoicePeer) => void = () => {};
   public onPeerLeft: (userId: string) => void = () => {};
   public onSignal: (data: SignalOffer) => void = () => {};
   public onConnected: () => void = () => {};
   public onDisconnected: () => void = () => {};
   public onStatusChanged: (userId: string, status: string) => void = () => {};
-  public onVoiceStateUpdated: (channelId: string, user: { id: string; username: string; avatarUrl?: string; status?: string }, joined: boolean) => void = () => {};
+  public onVoiceStateUpdated: (channelId: string, user: { id: string; username: string; avatarUrl?: string; status?: string; accentColor?: string }, joined: boolean) => void = () => {};
   public onAllVoiceStates: (states: Record<string, any[]>) => void = () => {};
   public onLiveStart: (data: { liveId: string; userId: string; username: string; avatarUrl: string; title: string; gameName: string; channelId: string }) => void = () => {};
   public onLiveStop: (liveId: string) => void = () => {};
@@ -21,16 +22,17 @@ export class SignalClient {
   private pendingMessages: any[] = [];
   private pingInterval: any = null;
 
-  constructor(userId: string, username: string, baseUrl?: string, avatarUrl: string = '', status: string = 'online') {
+  constructor(userId: string, username: string, baseUrl?: string, avatarUrl: string = '', status: string = 'online', accentColor: string = '') {
     this.userId = userId;
     this.username = username;
     this.avatarUrl = avatarUrl;
     this.status = status;
+    this.accentColor = accentColor;
     const wsBase = baseUrl || (() => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       return `${protocol}//${window.location.host}`;
     })();
-    const wsUrl = `${wsBase}/ws/?userId=${this.userId}&username=${encodeURIComponent(this.username)}&avatarUrl=${encodeURIComponent(this.avatarUrl)}&status=${encodeURIComponent(this.status)}`;
+    const wsUrl = `${wsBase}/ws/?userId=${this.userId}&username=${encodeURIComponent(this.username)}&avatarUrl=${encodeURIComponent(this.avatarUrl)}&status=${encodeURIComponent(this.status)}&accentColor=${encodeURIComponent(this.accentColor)}`;
 
     this.ws = new WebSocket(wsUrl);
     this.ws.onopen = () => {

@@ -37,7 +37,7 @@
     loadAuth();
     if ($user) {
       api.getMe().then((me) => {
-        user.set({ ...$user!, avatarUrl: me.avatarUrl || '', status: me.status || 'online' });
+        user.set({ ...$user!, avatarUrl: me.avatarUrl || '', status: me.status || 'online', accentColor: me.accentColor || '' });
       }).catch(() => {
         clearAuth();
       });

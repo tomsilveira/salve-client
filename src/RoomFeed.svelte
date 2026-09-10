@@ -21,6 +21,7 @@
   let status = $state($user?.status || 'online');
   let animatedBorder = $state($user?.animatedBorder || false);
   let nickname = $state($user?.username || '');
+  let accentColor = $state($user?.accentColor || '#0099ff');
 
   const newsSources = [
     { id: 'hackernews', name: 'Hacker News', emoji: '💻', category: 'Tech' },
@@ -196,7 +197,7 @@
   function saveAllInfo() {
     const u = get(user);
     if (u) {
-      const updated = { ...u, username: nickname, status, animatedBorder };
+      const updated = { ...u, username: nickname, status, animatedBorder, accentColor };
       user.set(updated);
       const safeUser = { id: updated.id, username: updated.username, email: updated.email, status: updated.status, createdAt: updated.createdAt };
       localStorage.setItem('salve_user', JSON.stringify(safeUser));
@@ -204,6 +205,7 @@
     customization = { ...customization, wallColor, backgroundImage: backgroundPreview || '' };
     localStorage.setItem('salve_room_customization', JSON.stringify(customization));
     api.updateStatus(status);
+    api.updateAccentColor(accentColor);
     refreshMembers.update((n) => n + 1);
     showSaveToast = true;
     setTimeout(() => (showSaveToast = false), 2000);
@@ -250,12 +252,17 @@
 
         <div class="profile-field">
           <label>Nickname</label>
-          <input
-            type="text"
-            bind:value={nickname}
-            class="profile-input"
-            placeholder="Digite seu nickname"
-          />
+          <div class="nickname-row">
+            <input
+              type="text"
+              bind:value={nickname}
+              class="profile-input"
+              placeholder="Digite seu nickname"
+            />
+            <label class="color-picker-btn" title="Cor preferida" style="background: {accentColor}">
+              <input type="color" bind:value={accentColor} class="color-input" />
+            </label>
+          </div>
         </div>
 
         <div class="profile-field">
@@ -529,6 +536,37 @@
 
   .profile-input:focus {
     border-color: #0099ff;
+  }
+
+  .nickname-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .nickname-row .profile-input {
+    flex: 1;
+  }
+
+  .color-picker-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 2px solid #2a2b2f;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color 0.2s;
+  }
+
+  .color-picker-btn:hover {
+    border-color: #555;
+  }
+
+  .color-input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    position: absolute;
   }
 
   .save-btn {

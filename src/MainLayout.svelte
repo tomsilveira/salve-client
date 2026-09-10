@@ -46,7 +46,7 @@
     if (!u) return;
     if (signalClient) return;
 
-    signalClient = new SignalClient(u.id, u.username, getWsUrl(), u.avatarUrl || '', u.status || 'online');
+    signalClient = new SignalClient(u.id, u.username, getWsUrl(), u.avatarUrl || '', u.status || 'online', u.accentColor || '');
 
     signalClient.onConnected = () => {
       console.log('[MainLayout] WebSocket connected, requesting voice states');
@@ -617,7 +617,7 @@
         <div class="user-cards-list">
           {#if selectedChannel?.type === 'voice'}
             {#each (voiceUsers.get(selectedChannel?.id || '') || []) as voiceUser (voiceUser.id)}
-              <div class="user-card">
+              <div class="user-card" style={voiceUser.accentColor ? `background: linear-gradient(to right, ${voiceUser.accentColor}30, #1a1a1f)` : ''}>
                 <div class="user-card-avatar" oncontextmenu={(e) => handleUserContextMenu(e, voiceUser)}>
                   {#if voiceUser.avatarUrl}
                     <img src="{getAvatarDisplayUrl(voiceUser.avatarUrl)}" alt={voiceUser.username} />

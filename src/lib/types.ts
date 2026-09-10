@@ -5,6 +5,7 @@ export interface User {
   avatarUrl?: string;
   status?: 'online' | 'away' | 'do-not-disturb' | 'invisible' | 'offline' | string;
   animatedBorder?: boolean;
+  accentColor?: string;
   createdAt: string;
 }
 

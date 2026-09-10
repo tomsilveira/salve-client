@@ -143,8 +143,14 @@ export const api = {
       body: JSON.stringify({ status }),
     }),
 
+  updateAccentColor: (color: string) =>
+    request<{ message: string }>('/user/accent-color', {
+      method: 'PUT',
+      body: JSON.stringify({ color }),
+    }),
+
   getMe: () =>
-    request<{ id: string; username: string; email: string; avatarUrl?: string; status?: string }>('/user/me'),
+    request<{ id: string; username: string; email: string; avatarUrl?: string; status?: string; accentColor?: string }>('/user/me'),
 
   reorderChannels: (serverId: string, channels: { id: string; position: number; categoryId?: string | null }[]) =>
     request<{ message: string }>(`/servers/${serverId}/channels/reorder`, {
