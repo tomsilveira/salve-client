@@ -5,11 +5,16 @@
   const voiceUsers = $derived($globalVoiceUsers);
   const channel = $derived($activeVoiceChannel);
   const channelUsers = $derived(channel ? (voiceUsers.get(channel.id) || []) : []);
-  const server = $derived($currentServer);
+  let lastServer: any = null;
+
+  currentServer.subscribe((s) => {
+    if (s) lastServer = s;
+  });
 
   function goToServer() {
-    if (server) {
-      currentServer.set(server);
+    const target = lastServer || $currentServer;
+    if (target) {
+      currentServer.set(target);
       viewMode.set('server');
       if (channel) {
         currentChannel.set(channel);

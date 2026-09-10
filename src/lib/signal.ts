@@ -19,6 +19,7 @@ export class SignalClient {
   public onSpeaking: (channelId: string, userId: string, speaking: boolean) => void = () => {};
 
   private pendingMessages: any[] = [];
+  private pingInterval: any = null;
 
   constructor(userId: string, username: string, baseUrl?: string, avatarUrl: string = '', status: string = 'online') {
     this.userId = userId;
@@ -34,17 +35,20 @@ export class SignalClient {
     this.ws = new WebSocket(wsUrl);
     this.ws.onopen = () => {
       console.log('[Signal] connected');
-      // Send pending messages
       for (const msg of this.pendingMessages) {
         this.send(msg);
       }
       this.pendingMessages = [];
       this.onConnected();
-      this.sendPing();
+      this.startHeartbeat();
     };
     this.ws.onclose = () => {
       console.log('[Signal] disconnected');
+      this.stopHeartbeat();
       this.onDisconnected();
+    };
+    this.ws.onerror = (e) => {
+      console.error('[Signal] WebSocket error', e);
     };
     this.ws.onmessage = (event) => {
       try {
@@ -55,8 +59,18 @@ export class SignalClient {
         console.error('[Signal] parse error', e);
       }
     };
+  }
 
-    setInterval(() => this.sendPing(), 25000);
+  private startHeartbeat() {
+    this.stopHeartbeat();
+    this.pingInterval = setInterval(() => {
+      this.send({ type: 'ping' });
+    }, 25000);
+  }
+
+  private stopHeartbeat() {
+    if (this.pingInterval) clearInterval(this.pingInterval);
+    this.pingInterval = null;
   }
 
   private handleMessage(msg: any) {

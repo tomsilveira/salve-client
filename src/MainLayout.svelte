@@ -50,6 +50,17 @@
       signalClient?.getVoiceStates();
     };
 
+    signalClient.onDisconnected = () => {
+      console.warn('[MainLayout] WebSocket disconnected');
+      if (activeVoiceChannel) {
+        console.warn('[MainLayout] Cleaning up voice state due to disconnect');
+        connectedPeers.set(new Map());
+        activeVoiceChannel = null;
+        activeVoiceChannelStore.set(null);
+        voiceLeaveFn.set(null);
+      }
+    };
+
     signalClient.onStatusChanged = (uid: string, newStatus: string) => {
       console.log('[MainLayout] status changed:', uid, newStatus);
       members = members.map((m) =>
@@ -78,11 +89,26 @@
 
     signalClient.onAllVoiceStates = (states: Record<string, any[]>) => {
       console.log('[MainLayout] all voice states:', states);
-      const newMap = new Map<string, any[]>();
-      for (const [chId, uList] of Object.entries(states)) {
-        newMap.set(chId, uList);
-      }
-      globalVoiceUsers.set(newMap);
+      globalVoiceUsers.update((existingMap) => {
+        const newMap = new Map(existingMap);
+        for (const [chId, uList] of Object.entries(states)) {
+          const existingList = newMap.get(chId) || [];
+          const merged = uList.map((incoming: any) => {
+            const existing = existingList.find((e: any) => e.id === incoming.id);
+            if (existing && !incoming.avatarUrl && existing.avatarUrl) {
+              return { ...incoming, avatarUrl: existing.avatarUrl };
+            }
+            return incoming;
+          });
+          newMap.set(chId, merged);
+        }
+        for (const [chId] of newMap) {
+          if (!states[chId]) {
+            newMap.delete(chId);
+          }
+        }
+        return newMap;
+      });
     };
 
     signalClient.onPeerJoined = (peer) => {

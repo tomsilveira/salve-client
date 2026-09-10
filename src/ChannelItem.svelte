@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Channel } from './lib/types';
-import { getUploadUrl } from './lib/api';
+import { getAvatarDisplayUrl } from './lib/api';
 
   const {
     channel,
@@ -99,7 +99,7 @@ import { getUploadUrl } from './lib/api';
         <div class="channel-member-item" onclick={() => onSelect(channel)} title="{user.username} ({user.status || 'online'})">
           <div class="member-avatar">
             {#if user.avatarUrl}
-              <img src={getUploadUrl(user.avatarUrl)} alt={user.username} />
+              <img src={getAvatarDisplayUrl(user.avatarUrl)} alt={user.username} />
             {:else}
               <span>{user.username?.[0]?.toUpperCase() || '?'}</span>
             {/if}
