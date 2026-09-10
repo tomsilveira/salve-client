@@ -88,10 +88,9 @@
     try {
       await api.joinServer(inviteCode);
       showInviteModal = false;
+      inviteCode = '';
       localStorage.removeItem('pending_invite');
-      // Refresh and navigate to communities
-      window.location.search = '';
-      window.location.reload();
+      window.location.href = '/';
     } catch (e: any) {
       joinError = e.message || 'Falha ao entrar no servidor';
     } finally {

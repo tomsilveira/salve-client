@@ -10,10 +10,11 @@
   let editing = $state(false);
   let editText = $state(msg.content);
 
-  function handleCopy() {
-    navigator.clipboard.writeText(msg.content);
-    showMenu = false;
-    dropdownOpen = false;
+  const inviteMatch = $derived(msg.content.match(/\?invite=([A-Za-z0-9-]+)/));
+  const inviteCode = $derived(inviteMatch ? inviteMatch[1] : null);
+
+  function handleAcceptInvite(code: string) {
+    window.location.href = `/?invite=${code}`;
   }
 
   function handleEdit() {
@@ -53,6 +54,18 @@
     {:else}
       {#if msg.content}
         <div class="message-text">{msg.content}</div>
+      {/if}
+      {#if inviteCode}
+        <div class="invite-card">
+          <div class="invite-icon">🔗</div>
+          <div class="invite-info">
+            <span class="invite-label">Convite para servidor</span>
+            <span class="invite-code">{inviteCode}</span>
+          </div>
+          <button class="invite-accept-btn" onclick={() => handleAcceptInvite(inviteCode)}>
+            Aceitar
+          </button>
+        </div>
       {/if}
       <div class="message-meta">
         <span class="message-time">{time}</span>
@@ -216,5 +229,58 @@
   .edit-btn.cancel {
     background: transparent;
     color: #8e9297;
+  }
+
+  .invite-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+    padding: 10px 14px;
+    background: rgba(0, 153, 255, 0.1);
+    border: 1px solid rgba(0, 153, 255, 0.3);
+    border-radius: 8px;
+  }
+
+  .invite-icon {
+    font-size: 20px;
+  }
+
+  .invite-info {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .invite-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: #e4e6eb;
+  }
+
+  .invite-code {
+    font-size: 11px;
+    color: #8e9297;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .invite-accept-btn {
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: none;
+    background: #23a559;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+    white-space: nowrap;
+  }
+
+  .invite-accept-btn:hover {
+    background: #1a8c47;
   }
 </style>
