@@ -50,7 +50,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...(options.headers || {}),
   };
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 30000);
   try {
     const res = await fetch(`${API_BASE}${path}`, { ...options, headers, signal: controller.signal });
     clearTimeout(timeout);
