@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Message } from './lib/types';
+  import { getAvatarDisplayUrl } from './lib/api';
 
   const { msg, currentUser, onEdit, onDelete } = $props();
 
@@ -41,36 +42,56 @@
     showMenu = false;
     dropdownOpen = false;
   }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(msg.content);
+    showMenu = false;
+    dropdownOpen = false;
+  }
 </script>
 
 <div class="message-bubble" class:own={isOwn} onmouseenter={() => isOwn && (showMenu = true)} onmouseleave={() => { if (!dropdownOpen) showMenu = false; }}>
-  <div class="message-content">
-    {#if editing}
-      <input type="text" bind:value={editText} class="edit-input" onkeydown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }} autofocus />
-      <div class="edit-actions">
-        <button class="edit-btn" onclick={saveEdit}>Salvar</button>
-        <button class="edit-btn cancel" onclick={cancelEdit}>Cancelar</button>
-      </div>
-    {:else}
-      {#if msg.content}
-        <div class="message-text">{msg.content}</div>
+  {#if !isOwn}
+    <div class="message-avatar">
+      {#if msg.authorAvatar}
+        <img src={getAvatarDisplayUrl(msg.authorAvatar)} alt={msg.authorName} />
+      {:else}
+        <span>{msg.authorName?.[0]?.toUpperCase() || '?'}</span>
       {/if}
-      {#if inviteCode}
-        <div class="invite-card">
-          <div class="invite-icon">🔗</div>
-          <div class="invite-info">
-            <span class="invite-label">Convite para servidor</span>
-            <span class="invite-code">{inviteCode}</span>
+    </div>
+  {/if}
+  <div class="message-body">
+    {#if !isOwn}
+      <div class="message-author">{msg.authorName || 'Unknown'}</div>
+    {/if}
+    <div class="message-content">
+      {#if editing}
+        <input type="text" bind:value={editText} class="edit-input" onkeydown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }} autofocus />
+        <div class="edit-actions">
+          <button class="edit-btn" onclick={saveEdit}>Salvar</button>
+          <button class="edit-btn cancel" onclick={cancelEdit}>Cancelar</button>
+        </div>
+      {:else}
+        {#if msg.content}
+          <div class="message-text">{msg.content}</div>
+        {/if}
+        {#if inviteCode}
+          <div class="invite-card">
+            <div class="invite-icon">🔗</div>
+            <div class="invite-info">
+              <span class="invite-label">Convite para servidor</span>
+              <span class="invite-code">{inviteCode}</span>
+            </div>
+            <button class="invite-accept-btn" onclick={() => handleAcceptInvite(inviteCode)}>
+              Aceitar
+            </button>
           </div>
-          <button class="invite-accept-btn" onclick={() => handleAcceptInvite(inviteCode)}>
-            Aceitar
-          </button>
+        {/if}
+        <div class="message-meta">
+          <span class="message-time">{time}</span>
         </div>
       {/if}
-      <div class="message-meta">
-        <span class="message-time">{time}</span>
-      </div>
-    {/if}
+    </div>
   </div>
   {#if showMenu && !editing}
     <button class="menu-trigger" onclick={(e) => { e.stopPropagation(); dropdownOpen = !dropdownOpen; }}>⋯</button>
@@ -88,14 +109,54 @@
 
 <style>
   .message-bubble {
-    max-width: 60%;
-    margin-bottom: 4px;
-    align-self: flex-start;
+    max-width: 70%;
+    margin-bottom: 8px;
     position: relative;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
   }
 
   .message-bubble.own {
     align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  .message-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50% 50% 15% 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #2a2b2f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .message-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50% 50% 15% 50%;
+  }
+
+  .message-avatar span {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0099ff;
+  }
+
+  .message-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .message-author {
+    font-size: 12px;
+    font-weight: 600;
+    color: #0099ff;
   }
 
   .message-content {
@@ -134,17 +195,6 @@
     color: #cfe8ff;
   }
 
-  .message-menu {
-    position: absolute;
-    top: -8px;
-    right: 0;
-  }
-
-  .message-bubble.own .message-menu {
-    right: auto;
-    left: -24px;
-  }
-
   .menu-trigger {
     background: #2a2b2f;
     border: none;
@@ -157,6 +207,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+    align-self: center;
   }
 
   .menu-trigger:hover {
@@ -166,7 +218,7 @@
 
   .menu-dropdown {
     position: absolute;
-    top: 28px;
+    top: 0;
     right: 0;
     background: #1a1a1f;
     border: 1px solid #2a2b2f;
@@ -174,6 +226,11 @@
     overflow: hidden;
     z-index: 10;
     min-width: 120px;
+  }
+
+  .message-bubble.own .menu-dropdown {
+    right: auto;
+    left: 0;
   }
 
   .menu-item {

@@ -54,6 +54,8 @@ export interface Message {
   content: string;
   createdAt: string;
   updatedAt: string;
+  authorName?: string;
+  authorAvatar?: string;
 }
 
 export interface DirectMessage {
@@ -62,6 +64,9 @@ export interface DirectMessage {
   receiverId: string;
   content: string;
   createdAt: string;
+  senderName?: string;
+  senderAvatar?: string;
+}
 }
 
 export interface Attachment {
