@@ -290,8 +290,10 @@
             <div class="friend-activity">{friend.activity || ''}</div>
           </div>
 
-          <button class="btn-message-friend" title="Mensagem" onclick={() => openMessageModal(friend)}>💬</button>
-          <button class="btn-remove-friend" title="Remover amigo" onclick={() => removeFriend(friend.id)}>✕</button>
+          <div class="friend-actions">
+            <button class="btn-message-friend" title="Mensagem" onclick={() => openMessageModal(friend)}>💬 Mensagem</button>
+            <button class="btn-remove-friend" title="Remover amigo" onclick={() => removeFriend(friend.id)}>🗑️</button>
+          </div>
         </div>
       {/each}
     {/if}
@@ -592,20 +594,30 @@
     opacity: 1;
   }
 
+  .friend-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
   .btn-message-friend {
-    width: 28px;
-    height: 28px;
+    padding: 6px 14px;
+    height: 32px;
     border: none;
     border-radius: 6px;
     background: transparent;
-    color: #8e9297;
-    font-size: 14px;
+    color: #b5bac1;
+    font-size: 13px;
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.2s, background 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px;
+    white-space: nowrap;
   }
 
   .btn-message-friend:hover {
@@ -745,26 +757,25 @@
   }
 
   .btn-remove-friend {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
     border: none;
-    border-radius: 50%;
-    background: #ff454a;
-    color: white;
-    font-size: 12px;
+    border-radius: 6px;
+    background: transparent;
+    color: #8e9297;
+    font-size: 14px;
     cursor: pointer;
     opacity: 0;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, background 0.2s;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
   }
 
   .btn-remove-friend:hover {
-    background: #cc3338;
+    background: rgba(255, 69, 74, 0.15);
+    color: #ff454a;
   }
 
   .friend-avatar {
