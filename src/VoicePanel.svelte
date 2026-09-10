@@ -593,7 +593,6 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       screenAudioActive = screenStream.getAudioTracks().length > 0;
       console.log('[ScreenShare] Audio tracks:', screenStream.getAudioTracks().length, 'audio active:', screenAudioActive);
       screenSharing = true;
-      playScreenStartSound();
       await tick();
       if (localScreen) {
         localScreen.srcObject = screenStream;
@@ -664,7 +663,6 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     }
     screenSharing = false;
     screenAudioActive = false;
-    playScreenStopSound();
     if (localScreen) {
       localScreen.srcObject = null;
     }
