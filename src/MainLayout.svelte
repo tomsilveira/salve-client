@@ -73,10 +73,11 @@
     };
 
     signalClient.onVoiceStateUpdated = (channelId: string, voiceUser: any, isJoin: boolean) => {
-      console.log('[MainLayout] voice state update:', channelId, voiceUser.username, isJoin);
-      if (voiceUser.id !== currentUserId) {
-        if (isJoin) playJoinSound();
-        else playLeaveSound();
+      const selfId = get(user)?.id || '';
+      console.log('[MainLayout] voice state update:', channelId, voiceUser.username, 'isJoin:', isJoin, 'selfId:', selfId, 'userId:', voiceUser.id);
+      if (voiceUser.id !== selfId) {
+        if (isJoin === true) { console.log('[Sound] playing join'); playJoinSound(); }
+        else if (isJoin === false) { console.log('[Sound] playing leave'); playLeaveSound(); }
       }
       globalVoiceUsers.update((map) => {
         const newMap = new Map(map);
