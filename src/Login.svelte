@@ -68,7 +68,7 @@
 <div class="login-container">
   <div class="login-card">
     <div class="logo">
-      <img src="/favicon.ico" alt="Salve" class="logo-icon" />
+      <img src="/salve-icon.png" alt="Salve" class="logo-icon" />
       <span class="logo-text">Salve</span>
     </div>
 
@@ -164,8 +164,8 @@
   }
 
   .logo-icon {
-    width: 40px;
-    height: 40px;
+    height: 50px;
+    width: auto;
   }
 
   .logo-text {
