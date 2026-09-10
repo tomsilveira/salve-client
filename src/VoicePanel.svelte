@@ -38,6 +38,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
   let showLiveModal = $state(false);
   let hasAudioTrack = $state(false);
   let hasVideoTrack = $state(false);
+  let callbacksSetup = false;
   const peerConnections = getPeerConnections();
   const remoteStreams = getRemoteStreams();
 
@@ -303,6 +304,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
 
   function cleanupPeerConnections() {
     stopMixedAudio();
+    callbacksSetup = false;
     if (noiseProcessor) {
       noiseProcessor.destroy();
       noiseProcessor = null;
@@ -366,14 +368,21 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         });
       };
 
-      if (!videoTrack.muted) {
-        tryPlay();
-      } else {
-        console.log('[ScreenVideo] Track muted, waiting for unmute for', peerId);
+      tryPlay();
+
+      if (videoTrack.muted) {
+        console.log('[ScreenVideo] Track muted, polling for unmute for', peerId);
         videoTrack.addEventListener('unmute', () => {
           console.log('[ScreenVideo] Track unmuted for', peerId);
           tryPlay();
         }, { once: true });
+        const pollInterval = setInterval(() => {
+          if (!videoTrack.muted || screenPlayState.get(peerId)) {
+            clearInterval(pollInterval);
+            tryPlay();
+          }
+        }, 500);
+        videoTrack.addEventListener('ended', () => clearInterval(pollInterval));
       }
 
       videoTrack.addEventListener('ended', () => {
@@ -806,7 +815,8 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
   });
 
   function setupCallbacks() {
-    if (!signalClient) return;
+    if (!signalClient || callbacksSetup) return;
+    callbacksSetup = true;
     console.log('[VoicePanel] setupCallbacks called, joined:', joined, 'channel:', channel.id);
     signalClient.onPeerJoined = async (peer: VoicePeer) => {
       if (peer.userId === userId) {
@@ -821,9 +831,13 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         return newMap;
       });
       if (currentJoined && userId < peer.userId) {
-        console.log('[VoicePanel] Creating peer connection as initiator for', peer.username);
-        await ensureLocalStream();
-        await createPeerConnection(peer.userId, channel.id, true);
+        if (!peerConnections.has(peer.userId)) {
+          console.log('[VoicePanel] Creating peer connection as initiator for', peer.username);
+          await ensureLocalStream();
+          await createPeerConnection(peer.userId, channel.id, true);
+        } else {
+          console.log('[VoicePanel] Peer already has PC, skipping create for', peer.username);
+        }
       } else if (currentJoined) {
         console.log('[VoicePanel] Waiting for offer from', peer.username, '(they are initiator)');
       } else {

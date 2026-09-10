@@ -24,8 +24,8 @@ export const remoteScreenStreams: Writable<Map<string, MediaStream>> = writable(
 export const speakingUsers: Writable<Set<string>> = writable(new Set());
 
 const storedNoiseSuppression = typeof window !== 'undefined'
-  ? localStorage.getItem('salve_noise_suppression') !== 'false'
-  : true;
+  ? localStorage.getItem('salve_noise_suppression') === 'true'
+  : false;
 export const noiseSuppressionEnabled: Writable<boolean> = writable(storedNoiseSuppression);
 noiseSuppressionEnabled.subscribe((v) => {
   if (typeof window !== 'undefined') {
