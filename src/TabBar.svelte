@@ -28,7 +28,7 @@
 <div class="tab-bar">
   <div class="tab-container">
     {#each tabs as tab (tab.id)}
-      {@const isActive = tab.id === 'communities' ? ($viewMode === 'server' || $activeTab === 'communities') : $activeTab === tab.id}
+      {@const isActive = tab.id === 'communities' ? ($viewMode === 'server' || $activeTab === 'communities') : ($viewMode !== 'server' && $activeTab === tab.id)}
       <div
         class="tab-item"
         class:active={isActive}
