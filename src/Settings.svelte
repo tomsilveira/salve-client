@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { user, token, clearAuth } from './lib/stores';
+  import { user, token, clearAuth, inputDeviceId, outputDeviceId } from './lib/stores';
   import { request } from './lib/api';
 
   let currentUser: any = null;
@@ -12,8 +12,67 @@
   let error = '';
   let success = '';
 
+  let inputDevices: MediaDeviceInfo[] = [];
+  let outputDevices: MediaDeviceInfo[] = [];
+  let selectedInput = 'default';
+  let selectedOutput = 'default';
+  let micTesting = $state(false);
+  let testStream: MediaStream | null = null;
+
   user.subscribe((u) => (currentUser = u));
   token.subscribe((t) => (currentToken = t));
+  inputDeviceId.subscribe((v) => (selectedInput = v));
+  outputDeviceId.subscribe((v) => (selectedOutput = v));
+
+  async function enumerateDevices() {
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      inputDevices = devices.filter((d) => d.kind === 'audioinput');
+      outputDevices = devices.filter((d) => d.kind === 'audiooutput');
+    } catch (e) {
+      console.warn('Could not enumerate devices:', e);
+    }
+  }
+
+  function handleInputChange(e: Event) {
+    const val = (e.target as HTMLSelectElement).value;
+    inputDeviceId.set(val);
+  }
+
+  function handleOutputChange(e: Event) {
+    const val = (e.target as HTMLSelectElement).value;
+    outputDeviceId.set(val);
+    document.querySelectorAll('audio').forEach((el: HTMLAudioElement) => {
+      if (typeof (el as any).setSinkId === 'function') {
+        (el as any).setSinkId(val).catch(() => {});
+      }
+    });
+  }
+
+  async function toggleMicTest() {
+    if (micTesting) {
+      if (testStream) {
+        testStream.getTracks().forEach((t) => t.stop());
+        testStream = null;
+      }
+      micTesting = false;
+      return;
+    }
+    try {
+      const constraints: MediaStreamConstraints = {
+        audio: selectedInput === 'default' ? true : { deviceId: { exact: selectedInput } },
+      };
+      testStream = await navigator.mediaDevices.getUserMedia(constraints);
+      micTesting = true;
+    } catch (e) {
+      console.error('Mic test failed:', e);
+    }
+  }
+
+  onMount(() => {
+    enumerateDevices();
+  });
 
   function handleLogout() {
     clearAuth();
@@ -117,6 +176,43 @@
 
   <div class="settings-section">
     <h3>Áudio</h3>
+
+    <div class="setting-item">
+      <div class="setting-info">
+        <span class="setting-label">Dispositivo de entrada (microfone)</span>
+      </div>
+      <select class="device-select" value={selectedInput} onchange={handleInputChange}>
+        {#each inputDevices as device}
+          <option value={device.deviceId}>
+            {device.label || `Microfone ${inputDevices.indexOf(device) + 1}`}
+          </option>
+        {/each}
+      </select>
+    </div>
+
+    <div class="setting-item">
+      <div class="setting-info">
+        <span class="setting-label">Dispositivo de saída (alto-falante)</span>
+      </div>
+      <select class="device-select" value={selectedOutput} onchange={handleOutputChange}>
+        {#each outputDevices as device}
+          <option value={device.deviceId}>
+            {device.label || `Saída ${outputDevices.indexOf(device) + 1}`}
+          </option>
+        {/each}
+      </select>
+    </div>
+
+    <div class="setting-item">
+      <div class="setting-info">
+        <span class="setting-label">Testar microfone</span>
+        <span class="setting-value">{micTesting ? 'Gravando...' : 'Clique para testar'}</span>
+      </div>
+      <button class="btn-link" class:active={micTesting} onclick={toggleMicTest}>
+        {micTesting ? 'Parar' : 'Testar'}
+      </button>
+    </div>
+
     <div class="setting-item">
       <div class="setting-info">
         <span class="setting-label">Notificações de áudio</span>
@@ -275,6 +371,26 @@
 
   .btn-link.danger {
     color: #ff6b6b;
+  }
+
+  .btn-link.active {
+    color: #ff6b6b;
+  }
+
+  .device-select {
+    padding: 6px 10px;
+    border: 1px solid #2a2b2f;
+    border-radius: 6px;
+    background: #0f0f12;
+    color: #e4e6eb;
+    font-size: 12px;
+    max-width: 220px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .device-select:focus {
+    border-color: #0099ff;
   }
 
   .modal-backdrop {

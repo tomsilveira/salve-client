@@ -2,7 +2,7 @@
   import { onMount, onDestroy, tick } from 'svelte';
   import type { Channel, VoicePeer } from './lib/types';
   import type { SignalClient } from './lib/signal';
-import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers } from './lib/stores';
+import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, inputDeviceId, outputDeviceId, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers } from './lib/stores';
 import { micState } from './lib/micState';
 import { getUploadUrl, getAvatarDisplayUrl } from './lib/api';
 import { startMicrophoneAnalysis, stopMicrophoneAnalysis, isSpeaking } from './lib/microphone';
@@ -138,6 +138,9 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
           document.body.appendChild(audio);
         }
         audio.srcObject = remoteStream;
+        if ($outputDeviceId !== 'default' && typeof (audio as any).setSinkId === 'function') {
+          (audio as any).setSinkId($outputDeviceId).catch(() => {});
+        }
 
         console.log('[VoicePanel] Remote audio element:', {
           id: audio.id,
@@ -405,7 +408,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     if (micInitPromise) { await micInitPromise; return; }
     micInitPromise = (async () => {
       try {
-        const rawStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const rawStream = await navigator.mediaDevices.getUserMedia({ audio: $inputDeviceId === 'default' ? true : { deviceId: { exact: $inputDeviceId } } });
         hasAudioTrack = true;
         hasVideoTrack = false;
         micEnabled = true;
@@ -696,7 +699,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     if (!joined || !$localVoiceStream) return;
 
     if (newState) {
-      const rawStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rawStream = await navigator.mediaDevices.getUserMedia({ audio: $inputDeviceId === 'default' ? true : { deviceId: { exact: $inputDeviceId } } });
       await setupNoiseSuppression(rawStream);
     } else {
       if (noiseProcessor) {
@@ -704,7 +707,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         noiseProcessor = null;
         noiseSuppressionReady = false;
       }
-      const rawStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rawStream = await navigator.mediaDevices.getUserMedia({ audio: $inputDeviceId === 'default' ? true : { deviceId: { exact: $inputDeviceId } } });
       localVoiceStream.set(rawStream);
     }
 

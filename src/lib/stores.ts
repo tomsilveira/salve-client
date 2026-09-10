@@ -33,6 +33,26 @@ noiseSuppressionEnabled.subscribe((v) => {
   }
 });
 
+const storedInputDevice = typeof window !== 'undefined'
+  ? localStorage.getItem('salve_input_device') || 'default'
+  : 'default';
+export const inputDeviceId: Writable<string> = writable(storedInputDevice);
+inputDeviceId.subscribe((v) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('salve_input_device', v);
+  }
+});
+
+const storedOutputDevice = typeof window !== 'undefined'
+  ? localStorage.getItem('salve_output_device') || 'default'
+  : 'default';
+export const outputDeviceId: Writable<string> = writable(storedOutputDevice);
+outputDeviceId.subscribe((v) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('salve_output_device', v);
+  }
+});
+
 export const isAuthenticated = (): boolean => {
   if (typeof window === 'undefined') return false;
   const t = localStorage.getItem('salve_token');
