@@ -17,12 +17,19 @@ import { getAvatarDisplayUrl } from './lib/api';
     onDragLeave,
     onDrop,
     onDragEnd,
+    onEditChannel,
+    onDeleteChannel,
   } = $props();
 
   const isSelected = $derived(selectedChannel?.id === channel.id);
   const isActiveVoice = $derived(channel.type === 'voice' && activeVoiceChannel?.id === channel.id);
   const usersInChannel = $derived(voiceUsers.get(channel.id) || []);
   const icon = $derived(channel.type === 'voice' ? '🔊' : '#');
+
+  let contextMenu = $state<{ x: number; y: number } | null>(null);
+  let editingName = $state(false);
+  let editName = $state('');
+  let editTopic = $state(channel.topic || '');
 
   function handleDragStart(e: DragEvent) {
     if (e.dataTransfer) {
@@ -47,6 +54,46 @@ import { getAvatarDisplayUrl } from './lib/api';
     e.preventDefault();
     onDrop?.(channel.id);
   }
+
+  function handleContextMenu(e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    contextMenu = { x: e.clientX, y: e.clientY };
+  }
+
+  function closeContextMenu() {
+    contextMenu = null;
+  }
+
+  function startEditName() {
+    editName = channel.name;
+    editingName = true;
+    contextMenu = null;
+  }
+
+  function saveEditName() {
+    if (editName.trim() && editName !== channel.name) {
+      onEditChannel?.(channel.id, { name: editName.trim() });
+    }
+    editingName = false;
+  }
+
+  function handleDeleteChannel() {
+    contextMenu = null;
+    onDeleteChannel?.(channel.id);
+  }
+
+  $effect(() => {
+    if (contextMenu) {
+      const handler = () => closeContextMenu();
+      document.addEventListener('click', handler);
+      document.addEventListener('contextmenu', handler);
+      return () => {
+        document.removeEventListener('click', handler);
+        document.removeEventListener('contextmenu', handler);
+      };
+    }
+  });
 </script>
 
 <div
@@ -66,11 +113,24 @@ import { getAvatarDisplayUrl } from './lib/api';
     ondrop={handleDrop}
     ondragend={() => onDragEnd?.()}
     onclick={() => onSelect(channel)}
+    oncontextmenu={handleContextMenu}
     title="{channel.name} — Arraste para reordenar"
   >
     <span class="drag-handle" title="Arrastar">⠿</span>
     <span class="channel-icon">{icon}</span>
-    <span class="channel-name">{channel.name}</span>
+    {#if editingName}
+      <input
+        type="text"
+        class="channel-name-input"
+        bind:value={editName}
+        onblur={saveEditName}
+        onkeydown={(e) => { if (e.key === 'Enter') saveEditName(); if (e.key === 'Escape') editingName = false; }}
+        onclick={(e) => e.stopPropagation()}
+        autofocus
+      />
+    {:else}
+      <span class="channel-name">{channel.name}</span>
+    {/if}
 
     {#if channel.type === 'voice'}
       {#if usersInChannel.length > 0}
@@ -115,6 +175,15 @@ import { getAvatarDisplayUrl } from './lib/api';
           <span class="speaking-indicator">🎙</span>
         </div>
       {/each}
+    </div>
+  {/if}
+
+  {#if contextMenu}
+    <div class="context-menu-backdrop" onclick={closeContextMenu} oncontextmenu={(e) => { e.preventDefault(); closeContextMenu(); }}>
+      <div class="context-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px;" onclick={(e) => e.stopPropagation()}>
+        <button class="context-menu-item" onclick={startEditName}>✏️ Renomear</button>
+        <button class="context-menu-item danger" onclick={handleDeleteChannel}>🗑️ Excluir</button>
+      </div>
     </div>
   {/if}
 </div>
@@ -328,5 +397,61 @@ import { getAvatarDisplayUrl } from './lib/api';
     font-size: 10px;
     color: #8e9297;
     opacity: 0.6;
+  }
+
+  .channel-name-input {
+    flex: 1;
+    background: #1a1b1e;
+    border: 1px solid #0099ff;
+    border-radius: 4px;
+    color: #e4e6eb;
+    font-size: 14px;
+    padding: 2px 6px;
+    outline: none;
+    min-width: 0;
+  }
+
+  .context-menu-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+  }
+
+  .context-menu {
+    position: fixed;
+    background: #2a2b2f;
+    border: 1px solid #3a3b3f;
+    border-radius: 8px;
+    padding: 4px;
+    min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    z-index: 1001;
+  }
+
+  .context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 8px 12px;
+    border: none;
+    background: transparent;
+    color: #e4e6eb;
+    font-size: 13px;
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: left;
+  }
+
+  .context-menu-item:hover {
+    background: #3a3b3f;
+  }
+
+  .context-menu-item.danger {
+    color: #ff454a;
+  }
+
+  .context-menu-item.danger:hover {
+    background: rgba(255, 69, 74, 0.15);
   }
 </style>

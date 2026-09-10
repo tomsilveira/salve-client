@@ -13,6 +13,8 @@
     voiceUsers = new Map(),
     onJoinVoice,
     onReorder,
+    onEditChannel,
+    onDeleteChannel,
   } = $props();
 
   let showCreate = $state(false);
@@ -113,6 +115,8 @@
             {onSelect}
             {voiceUsers}
             {onJoinVoice}
+            {onEditChannel}
+            {onDeleteChannel}
             isDragging={draggedChannelId === channel.id}
             isDragOver={dragOverChannelId === channel.id}
             {dragOverPosition}
@@ -140,6 +144,8 @@
               {onSelect}
               {voiceUsers}
               {onJoinVoice}
+              {onEditChannel}
+              {onDeleteChannel}
               isDragging={draggedChannelId === channel.id}
               isDragOver={dragOverChannelId === channel.id}
               {dragOverPosition}

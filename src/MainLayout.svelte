@@ -373,6 +373,33 @@
     }
   }
 
+  function handleEditChannel(channelId: string, data: { name?: string; topic?: string }) {
+    if (!selectedServer) return;
+    api.updateChannel(selectedServer.id, channelId, data)
+      .then((updated: Channel) => {
+        channels = channels.map(c => c.id === channelId ? { ...c, ...updated } : c);
+        channelTree.set({ categories, channels });
+        if (selectedChannel?.id === channelId) {
+          selectedChannel = { ...selectedChannel, ...updated };
+        }
+      })
+      .catch((e) => console.error('Failed to update channel', e));
+  }
+
+  function handleDeleteChannel(channelId: string) {
+    if (!selectedServer) return;
+    if (!confirm('Tem certeza que deseja excluir este canal?')) return;
+    api.deleteChannel(selectedServer.id, channelId)
+      .then(() => {
+        channels = channels.filter(c => c.id !== channelId);
+        channelTree.set({ categories, channels });
+        if (selectedChannel?.id === channelId) {
+          selectedChannel = null;
+        }
+      })
+      .catch((e) => console.error('Failed to delete channel', e));
+  }
+
   onDestroy(() => {
     if (signalClient) {
       signalClient.disconnect();
@@ -527,6 +554,8 @@
         onJoinVoice={handleJoinVoice}
         onCreateChannel={handleCreateChannel}
         onReorder={handleReorderChannels}
+        onEditChannel={handleEditChannel}
+        onDeleteChannel={handleDeleteChannel}
       />
     </div>
 

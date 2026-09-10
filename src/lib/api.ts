@@ -200,6 +200,17 @@ export const api = {
       body: JSON.stringify({ name, type, categoryId, topic }),
     }),
 
+  updateChannel: (serverId: string, channelId: string, data: { name?: string; topic?: string; categoryId?: string }) =>
+    request<Channel>(`/servers/${serverId}/channels/${channelId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  deleteChannel: (serverId: string, channelId: string) =>
+    request<{ message: string }>(`/servers/${serverId}/channels/${channelId}`, {
+      method: 'DELETE',
+    }),
+
   getMessages: (channelId: string, limit = 50) =>
     request<Message[]>(`/channels/${channelId}/messages?limit=${limit}`),
 
