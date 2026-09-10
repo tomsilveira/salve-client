@@ -3,6 +3,7 @@
   import type { Channel, VoicePeer } from './lib/types';
   import type { SignalClient } from './lib/signal';
 import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, inputDeviceId, outputDeviceId, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers } from './lib/stores';
+import { playScreenStartSound, playScreenStopSound } from './lib/sounds';
 import { micState } from './lib/micState';
 import { getUploadUrl, getAvatarDisplayUrl } from './lib/api';
 import { startMicrophoneAnalysis, stopMicrophoneAnalysis, isSpeaking } from './lib/microphone';
@@ -166,6 +167,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
           console.warn('[VoicePanel] Remote audio autoplay blocked:', e?.message || e);
         });
       } else if (track.kind === 'video') {
+        playScreenStartSound();
         remoteScreenStreams.set(peerId, remoteStream);
         syncScreenStreamsToStore();
         screenUpdateCounter++;
@@ -267,6 +269,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       }
     } else if (signal.type === 'screen-share-stopped') {
       console.log('[ScreenShare] Received screen-share-stopped from:', from, 'remoteScreenStreams.has(from):', remoteScreenStreams.has(from), 'remoteScreenStreams keys:', [...remoteScreenStreams.keys()]);
+      playScreenStopSound();
       if (remoteScreenStreams.has(from)) {
         const el = videoEls[from];
         if (el) el.srcObject = null;
@@ -589,6 +592,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       screenAudioActive = screenStream.getAudioTracks().length > 0;
       console.log('[ScreenShare] Audio tracks:', screenStream.getAudioTracks().length, 'audio active:', screenAudioActive);
       screenSharing = true;
+      playScreenStartSound();
       await tick();
       if (localScreen) {
         localScreen.srcObject = screenStream;
@@ -652,6 +656,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     }
     screenSharing = false;
     screenAudioActive = false;
+    playScreenStopSound();
     if (localScreen) {
       localScreen.srcObject = null;
     }

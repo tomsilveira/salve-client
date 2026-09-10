@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
   import { api, getUploadUrl, getAvatarDisplayUrl } from './lib/api';
+  import { playJoinSound, playLeaveSound } from './lib/sounds';
   import { user, servers, currentServer, currentChannel, channelTree, connectedPeers, viewMode, refreshMembers, globalVoiceUsers, activeVoiceChannel as activeVoiceChannelStore, voiceLeaveFn, liveStreams } from './lib/stores';
   import type { Server, Channel, Category, Message, ServerMember } from './lib/types';
   import { SignalClient } from './lib/signal';
@@ -73,6 +74,10 @@
 
     signalClient.onVoiceStateUpdated = (channelId: string, voiceUser: any, isJoin: boolean) => {
       console.log('[MainLayout] voice state update:', channelId, voiceUser.username, isJoin);
+      if (voiceUser.id !== currentUserId) {
+        if (isJoin) playJoinSound();
+        else playLeaveSound();
+      }
       globalVoiceUsers.update((map) => {
         const newMap = new Map(map);
         const currentList = newMap.get(channelId) || [];
