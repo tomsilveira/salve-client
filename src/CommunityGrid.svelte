@@ -2,9 +2,10 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { api, getUploadUrl } from './lib/api';
-import { servers, currentServer, currentChannel, channelTree, viewMode, friends, user } from './lib/stores';
+import { servers, currentServer, currentChannel, channelTree, viewMode, friends, user, unreadCounts, hasUnread, activeTab } from './lib/stores';
 import type { Server, Friend, ServerMember } from './lib/types';
 import CreateServerModal from './CreateServerModal.svelte';
+import UserContextMenu from './UserContextMenu.svelte';
 
 let serverList = $derived($servers);
 const friendList = $derived($friends);
@@ -13,6 +14,7 @@ const friendList = $derived($friends);
   let errorMessage = $state('');
   const serverMembers: Record<string, ServerMember[]> = {};
   const loadingMembers: Record<string, boolean> = {};
+  let userContextMenu = $state<{ user: any; x: number; y: number } | null>(null);
 
   async function loadServerMembers(serverId: string) {
     if (serverMembers[serverId] || loadingMembers[serverId]) return;
@@ -85,6 +87,41 @@ const friendList = $derived($friends);
         console.error('Failed to delete server', err);
         errorMessage = err.message || 'Falha ao deletar servidor';
       }
+    }
+  }
+
+  function handleUserContextMenu(e: MouseEvent, memberUser: any) {
+    e.preventDefault();
+    e.stopPropagation();
+    userContextMenu = { user: memberUser, x: e.clientX, y: e.clientY };
+  }
+
+  function handleUserMessage(userId: string) {
+    viewMode.set('tabs');
+    activeTab.set('friends');
+  }
+
+  async function handleAddFriend(userId: string) {
+    try {
+      await fetch('/api/friends/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+    } catch (e) {
+      console.error('Failed to send friend request:', e);
+    }
+  }
+
+  async function handleInviteToServer(serverId: string, userId: string) {
+    try {
+      await fetch(`/api/servers/${serverId}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+    } catch (e) {
+      console.error('Failed to invite to server:', e);
     }
   }
 
@@ -212,13 +249,16 @@ const friendList = $derived($friends);
     <div class="friends-list">
       {#each friendList as friend (friend.id)}
         <div class="friend-card">
-          <div class="friend-avatar">
+          <div class="friend-avatar" oncontextmenu={(e) => handleUserContextMenu(e, friend)}>
             {#if friend.avatarUrl}
               <img src={getUploadUrl(friend.avatarUrl)} alt={friend.username} />
             {:else}
               <span>{friend.username?.[0]?.toUpperCase() || '?'}</span>
             {/if}
             <div class="friend-status" class:online={friend.status === 'online'} class:away={friend.status === 'away'} class:dnd={friend.status === 'do-not-disturb'} class:offline={friend.status === 'offline' || friend.status === 'invisible'}></div>
+            {#if $unreadCounts[friend.id]}
+              <div class="unread-dot"></div>
+            {/if}
           </div>
           <div class="friend-info">
             <span class="friend-name">{friend.username}</span>
@@ -236,6 +276,20 @@ const friendList = $derived($friends);
   <CreateServerModal
     onclose={() => (showCreateModal = false)}
     oncreate={handleCreateServer}
+  />
+{/if}
+
+{#if userContextMenu}
+  <UserContextMenu
+    targetUser={userContextMenu.user}
+    x={userContextMenu.x}
+    y={userContextMenu.y}
+    onClose={() => userContextMenu = null}
+    onMessage={handleUserMessage}
+    friends={$friends}
+    onAddFriend={handleAddFriend}
+    servers={$servers}
+    onInviteToServer={handleInviteToServer}
   />
 {/if}
 
@@ -404,6 +458,18 @@ const friendList = $derived($friends);
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  .unread-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    background: #0099ff;
+    border-radius: 50%;
+    border: 2px solid #1a1a1f;
+    z-index: 1;
   }
 
   .friend-status {
