@@ -3,6 +3,7 @@
   import { get } from 'svelte/store';
   import { api, getUploadUrl, getAvatarDisplayUrl } from './lib/api';
   import { playJoinSound, playLeaveSound } from './lib/sounds';
+  import UserContextMenu from './UserContextMenu.svelte';
   import { user, servers, currentServer, currentChannel, channelTree, connectedPeers, viewMode, refreshMembers, globalVoiceUsers, activeVoiceChannel as activeVoiceChannelStore, voiceLeaveFn, liveStreams } from './lib/stores';
   import type { Server, Channel, Category, Message, ServerMember } from './lib/types';
   import { SignalClient } from './lib/signal';
@@ -31,6 +32,7 @@
   let onlineCount = $state(0);
   let activeVoiceChannel: Channel | null = $state(null);
   let signalClient: SignalClient | null = $state(null);
+  let userContextMenu = $state<{ user: any; x: number; y: number } | null>(null);
   const { onBack = () => {} } = $props();
   servers.subscribe((s) => { serverList = s; });
   currentServer.subscribe((s) => { selectedServer = s; });
@@ -234,6 +236,20 @@
       console.error('Failed to load members', e);
       members = [];
       onlineCount = 0;
+    }
+  }
+
+  function handleUserContextMenu(e: MouseEvent, memberUser: any) {
+    e.preventDefault();
+    e.stopPropagation();
+    userContextMenu = { user: memberUser, x: e.clientX, y: e.clientY };
+  }
+
+  function handleUserMessage(userId: string) {
+    const friend = members.find(m => m.userId === userId)?.user;
+    if (friend) {
+      viewMode.set('tabs');
+      activeTab.set('friends');
     }
   }
 
@@ -573,7 +589,7 @@
           {#if selectedChannel?.type === 'voice'}
             {#each (voiceUsers.get(selectedChannel?.id || '') || []) as voiceUser (voiceUser.id)}
               <div class="user-card">
-                <div class="user-card-avatar">
+                <div class="user-card-avatar" oncontextmenu={(e) => handleUserContextMenu(e, voiceUser)}>
                   {#if voiceUser.avatarUrl}
                     <img src="{getAvatarDisplayUrl(voiceUser.avatarUrl)}" alt={voiceUser.username} />
                   {:else}
@@ -590,7 +606,7 @@
           {:else}
             {#each members as member (member.userId)}
               <div class="user-card">
-                <div class="user-card-avatar">
+                <div class="user-card-avatar" oncontextmenu={(e) => handleUserContextMenu(e, member.user)}>
                    {#if member.user?.avatarUrl}
                 <img src="{getAvatarDisplayUrl(member.user.avatarUrl)}" alt={member.user.username} />
                    {:else}
@@ -719,6 +735,16 @@
 
 {#if showInviteModal && selectedServer}
   <InviteFriendsModal server={selectedServer} onClose={() => (showInviteModal = false)} />
+{/if}
+
+{#if userContextMenu}
+  <UserContextMenu
+    targetUser={userContextMenu.user}
+    x={userContextMenu.x}
+    y={userContextMenu.y}
+    onClose={() => userContextMenu = null}
+    onMessage={handleUserMessage}
+  />
 {/if}
 
 <style>

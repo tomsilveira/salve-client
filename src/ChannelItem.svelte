@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Channel } from './lib/types';
 import { getAvatarDisplayUrl } from './lib/api';
+import UserContextMenu from './UserContextMenu.svelte';
 
   const {
     channel,
@@ -30,6 +31,7 @@ import { getAvatarDisplayUrl } from './lib/api';
   let editingName = $state(false);
   let editName = $state('');
   let editTopic = $state(channel.topic || '');
+  let userContextMenu = $state<{ user: any; x: number; y: number } | null>(null);
 
   function handleDragStart(e: DragEvent) {
     if (e.dataTransfer) {
@@ -81,6 +83,12 @@ import { getAvatarDisplayUrl } from './lib/api';
   function handleDeleteChannel() {
     contextMenu = null;
     onDeleteChannel?.(channel.id);
+  }
+
+  function handleUserContextMenu(e: MouseEvent, user: any) {
+    e.preventDefault();
+    e.stopPropagation();
+    userContextMenu = { user, x: e.clientX, y: e.clientY };
   }
 
   $effect(() => {
@@ -157,7 +165,7 @@ import { getAvatarDisplayUrl } from './lib/api';
     <div class="channel-members-list">
       {#each usersInChannel as user (user.id)}
         <div class="channel-member-item" onclick={() => onSelect(channel)} title="{user.username} ({user.status || 'online'})">
-          <div class="member-avatar">
+          <div class="member-avatar" oncontextmenu={(e) => handleUserContextMenu(e, user)}>
             {#if user.avatarUrl}
               <img src={getAvatarDisplayUrl(user.avatarUrl)} alt={user.username} />
             {:else}
@@ -185,6 +193,15 @@ import { getAvatarDisplayUrl } from './lib/api';
         <button class="context-menu-item danger" onclick={handleDeleteChannel}>🗑️ Excluir</button>
       </div>
     </div>
+  {/if}
+
+  {#if userContextMenu}
+    <UserContextMenu
+      targetUser={userContextMenu.user}
+      x={userContextMenu.x}
+      y={userContextMenu.y}
+      onClose={() => userContextMenu = null}
+    />
   {/if}
 </div>
 
