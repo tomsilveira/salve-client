@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy, tick } from 'svelte';
+  import { get } from 'svelte/store';
   import type { Channel, VoicePeer } from './lib/types';
   import type { SignalClient } from './lib/signal';
 import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, inputDeviceId, outputDeviceId, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers } from './lib/stores';
@@ -620,7 +621,14 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         if (pc.signalingState === 'stable') {
           renegotiate(peerId, pc);
         } else {
-          console.log('[ScreenShare] PC not stable for', peerId, 'state:', pc.signalingState, 'skipping renegotiation - will be included in next offer');
+          console.log('[ScreenShare] PC not stable for', peerId, 'state:', pc.signalingState, 'waiting for stable to renegotiate');
+          const onStateChange = () => {
+            if (pc.signalingState === 'stable') {
+              pc.removeEventListener('signalingstatechange', onStateChange);
+              renegotiate(peerId, pc);
+            }
+          };
+          pc.addEventListener('signalingstatechange', onStateChange);
         }
       }
     } catch (e) {
@@ -824,6 +832,21 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         console.warn('[VoicePanel] NOT creating PC - joined is false');
       }
     };
+
+    // Create peer connections for peers that joined BEFORE setupCallbacks ran
+    const currentPeers = get(connectedPeers);
+    for (const [peerId, peer] of currentPeers) {
+      if (peerId === userId) continue;
+      if (!peerConnections.has(peerId) && joined) {
+        console.log('[VoicePanel] Late peer detected, creating PC for', peer.username, 'isInitiator:', userId < peerId);
+        (async () => {
+          await ensureLocalStream();
+          if (userId < peerId) {
+            await createPeerConnection(peerId, channel.id, true);
+          }
+        })();
+      }
+    }
     signalClient.onPeerLeft = (uid: string) => {
       console.log('[VoicePanel] onPeerLeft:', uid);
       connectedPeers.update((m) => {

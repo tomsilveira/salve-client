@@ -274,7 +274,14 @@
       console.log('loadVoiceUsers result:', channelId, users);
       globalVoiceUsers.update((map) => {
         const newMap = new Map(map);
-        newMap.set(channelId, users || []);
+        const existing = newMap.get(channelId) || [];
+        const merged = [...existing];
+        for (const u of (users || [])) {
+          if (!merged.some((e: any) => e.id === u.id)) {
+            merged.push(u);
+          }
+        }
+        newMap.set(channelId, merged);
         return newMap;
       });
     } catch (e) {
