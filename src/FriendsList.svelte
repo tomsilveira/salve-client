@@ -1,6 +1,6 @@
 <script lang="ts">
   import { get } from 'svelte/store';
-  import { friends, user } from './lib/stores';
+  import { friends, user, unreadCounts, hasUnread } from './lib/stores';
   import type { Friend } from './lib/types';
   import { api, getUploadUrl } from './lib/api';
 
@@ -148,6 +148,16 @@
     selectedFriend = friend;
     showMessageModal = true;
     loadDirectMessages(friend.id);
+
+    // Clear unread notification for this friend
+    const current = get(unreadCounts);
+    if (current[friend.id]) {
+      const updated = { ...current };
+      delete updated[friend.id];
+      unreadCounts.set(updated);
+      hasUnread.set(Object.keys(updated).length > 0);
+      api.markConversationRead(friend.id).catch(() => {});
+    }
   }
 
   async function loadDirectMessages(friendId: string) {
@@ -283,6 +293,9 @@
               class="status-dot"
               style="background-color: {getStatusColor(onlineUsers[friend.id] || friend.status)}"
             ></div>
+            {#if $unreadCounts[friend.id]}
+              <div class="unread-dot"></div>
+            {/if}
           </div>
 
           <div class="friend-info">
@@ -783,6 +796,18 @@
     width: 48px;
     height: 48px;
     flex-shrink: 0;
+  }
+
+  .unread-dot {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 10px;
+    height: 10px;
+    background: #0099ff;
+    border-radius: 50%;
+    border: 2px solid #1a1a1f;
+    z-index: 1;
   }
 
   .avatar-img,

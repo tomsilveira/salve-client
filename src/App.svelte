@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { loadAuth, clearAuth, user, activeTab, viewMode, currentServer, activeVoiceChannel, liveStreams } from './lib/stores';
+  import { get } from 'svelte/store';
+  import { loadAuth, clearAuth, user, activeTab, viewMode, currentServer, activeVoiceChannel, liveStreams, unreadCounts, hasUnread } from './lib/stores';
   import { api, API_BASE } from './lib/api';
   import Login from './Login.svelte';
   import MainLayout from './MainLayout.svelte';
@@ -63,7 +64,24 @@
         }
       }
     }
+
+    if ($user) {
+      pollUnread();
+      setInterval(pollUnread, 10000);
+    }
   });
+
+  async function pollUnread() {
+    try {
+      const u = get(user);
+      if (!u) return;
+      const counts = await api.getUnreadCounts();
+      unreadCounts.set(counts || {});
+      hasUnread.set(Object.keys(counts || {}).length > 0);
+    } catch (e) {
+      // silent
+    }
+  }
 
   $effect(() => {
     // When user logs in, check for pending invite

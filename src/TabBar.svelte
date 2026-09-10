@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { activeTab, viewMode, currentServer } from './lib/stores';
+  import { activeTab, viewMode, currentServer, hasUnread } from './lib/stores';
 
   const { tabs = [
     { id: 'communities', label: 'COMUNIDADES', icon: '💬' },
@@ -36,6 +36,9 @@
       >
         <span class="tab-icon">{tab.icon}</span>
         <span class="tab-label">{tab.id === 'communities' && server ? server.name : tab.label}</span>
+        {#if tab.id === 'friends' && $hasUnread && !isActive}
+          <div class="tab-badge"></div>
+        {/if}
         {#if isActive}
           <div class="tab-indicator"></div>
         {/if}
@@ -111,5 +114,13 @@
     height: 3px;
     background: #0099ff;
     border-radius: 2px;
+  }
+
+  .tab-badge {
+    width: 8px;
+    height: 8px;
+    background: #0099ff;
+    border-radius: 50%;
+    flex-shrink: 0;
   }
 </style>

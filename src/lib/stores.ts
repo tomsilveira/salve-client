@@ -90,3 +90,6 @@ export const clearAuth = () => {
   token.set(null);
   user.set(null);
 };
+
+export const unreadCounts: Writable<Record<string, number>> = writable({});
+export const hasUnread: Writable<boolean> = writable(false);

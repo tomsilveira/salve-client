@@ -167,6 +167,12 @@ export const api = {
   getDirectMessages: (userId: string) =>
     request<any[]>(`/messages/direct/${userId}`),
 
+  getUnreadCounts: () =>
+    request<Record<string, number>>('/messages/unread'),
+
+  markConversationRead: (userId: string) =>
+    request<any>(`/messages/unread/${userId}`, { method: 'POST' }),
+
   uploadServerIcon: async (serverId: string, file: File) => {
     const t = get(token);
     const formData = new FormData();
