@@ -4,7 +4,7 @@
   import { api, getUploadUrl, getAvatarDisplayUrl } from './lib/api';
   import { playJoinSound, playLeaveSound } from './lib/sounds';
   import UserContextMenu from './UserContextMenu.svelte';
-  import { user, servers, currentServer, currentChannel, channelTree, connectedPeers, viewMode, refreshMembers, globalVoiceUsers, activeVoiceChannel as activeVoiceChannelStore, voiceLeaveFn, liveStreams } from './lib/stores';
+  import { user, servers, friends, currentServer, currentChannel, channelTree, connectedPeers, viewMode, refreshMembers, globalVoiceUsers, activeVoiceChannel as activeVoiceChannelStore, voiceLeaveFn, liveStreams } from './lib/stores';
   import type { Server, Channel, Category, Message, ServerMember } from './lib/types';
   import { SignalClient } from './lib/signal';
   import ServerList from './ServerList.svelte';
@@ -250,6 +250,30 @@
     if (friend) {
       viewMode.set('tabs');
       activeTab.set('friends');
+    }
+  }
+
+  async function handleAddFriend(userId: string) {
+    try {
+      await fetch('/api/friends/requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+    } catch (e) {
+      console.error('Failed to send friend request:', e);
+    }
+  }
+
+  async function handleInviteToServer(serverId: string, userId: string) {
+    try {
+      await fetch(`/api/servers/${serverId}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+    } catch (e) {
+      console.error('Failed to invite to server:', e);
     }
   }
 
@@ -542,7 +566,7 @@
       <div class="sidebar-members-section">
         <div class="sidebar-members-header">MEMBROS - {members.length}</div>
         {#each members as member (member.userId)}
-          <div class="sidebar-member">
+          <div class="sidebar-member" oncontextmenu={(e) => handleUserContextMenu(e, member.user)}>
             <div class="sidebar-member-avatar">
               {#if member.user?.avatarUrl}
                 <img src="{getAvatarDisplayUrl(member.user.avatarUrl)}" alt={member.user.username} />
@@ -744,6 +768,10 @@
     y={userContextMenu.y}
     onClose={() => userContextMenu = null}
     onMessage={handleUserMessage}
+    friends={$friends}
+    onAddFriend={handleAddFriend}
+    servers={$servers}
+    onInviteToServer={handleInviteToServer}
   />
 {/if}
 

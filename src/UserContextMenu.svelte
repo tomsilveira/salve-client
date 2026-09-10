@@ -1,22 +1,38 @@
 <script lang="ts">
   import { get } from 'svelte/store';
   import { user, currentServer } from './lib/stores';
-  import { getUploadUrl, getAvatarDisplayUrl } from './lib/api';
-  import type { Server } from './lib/types';
+  import { getAvatarDisplayUrl } from './lib/api';
+  import type { Server, Friend } from './lib/types';
 
-  const { targetUser, x, y, onClose, onMessage } = $props<{
+  const {
+    targetUser,
+    x,
+    y,
+    onClose,
+    onMessage,
+    friends = [],
+    onAddFriend,
+    servers = [],
+    onInviteToServer,
+  } = $props<{
     targetUser: { id: string; username: string; avatarUrl?: string };
     x: number;
     y: number;
     onClose: () => void;
     onMessage?: (userId: string) => void;
+    friends?: Friend[];
+    onAddFriend?: (userId: string) => void;
+    servers?: Server[];
+    onInviteToServer?: (serverId: string, userId: string) => void;
   }>();
 
   const currentUser = $derived(get(user));
   const server = $derived(get(currentServer));
   const isSelf = $derived(currentUser?.id === targetUser.id);
+  const isFriend = $derived(friends.some(f => f.id === targetUser.id));
 
   let menuEl = $state<HTMLDivElement>();
+  let showServers = $state(false);
 
   function handleCopyId() {
     navigator.clipboard.writeText(targetUser.id);
@@ -28,12 +44,22 @@
     onClose();
   }
 
+  function handleAddFriend() {
+    onAddFriend?.(targetUser.id);
+    onClose();
+  }
+
   function handleInviteLink() {
     if (server) {
       const link = `${window.location.origin}?invite=${(server as Server).inviteCode}`;
       navigator.clipboard.writeText(link);
       onClose();
     }
+  }
+
+  function handleInviteToServer(serverId: string) {
+    onInviteToServer?.(serverId, targetUser.id);
+    onClose();
   }
 
   $effect(() => {
@@ -83,7 +109,35 @@
         <span class="item-icon">💬</span>
         <span>Enviar mensagem</span>
       </button>
-      {#if server}
+      {#if !isFriend && onAddFriend}
+        <button class="user-context-item" onclick={handleAddFriend}>
+          <span class="item-icon">👤</span>
+          <span>Adicionar amigo</span>
+        </button>
+      {/if}
+      {#if servers.length > 0}
+        <div class="user-context-submenu">
+          <button class="user-context-item" onclick={() => showServers = !showServers}>
+            <span class="item-icon">🏠</span>
+            <span>Convidar para servidor</span>
+            <span class="submenu-arrow">{showServers ? '▾' : '▸'}</span>
+          </button>
+          {#if showServers}
+            <div class="submenu-list">
+              {#each servers as srv (srv.id)}
+                <button class="submenu-item" onclick={() => handleInviteToServer(srv.id)}>
+                  {#if srv.iconUrl}
+                    <img class="submenu-icon" src={srv.iconUrl} alt={srv.name} />
+                  {:else}
+                    <span class="submenu-icon-letter">{srv.name[0]?.toUpperCase()}</span>
+                  {/if}
+                  <span>{srv.name}</span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      {:else if server}
         <button class="user-context-item" onclick={handleInviteLink}>
           <span class="item-icon">🔗</span>
           <span>Copiar link de convite</span>
@@ -199,5 +253,56 @@
     font-size: 16px;
     width: 20px;
     text-align: center;
+  }
+
+  .submenu-arrow {
+    margin-left: auto;
+    font-size: 10px;
+    color: #8e9297;
+  }
+
+  .submenu-list {
+    padding-left: 12px;
+  }
+
+  .submenu-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: #b5bac1;
+    font-size: 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    text-align: left;
+  }
+
+  .submenu-item:hover {
+    background: #3a3b3f;
+    color: #e4e6eb;
+  }
+
+  .submenu-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    object-fit: cover;
+  }
+
+  .submenu-icon-letter {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    background: #5865f2;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
   }
 </style>
