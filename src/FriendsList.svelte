@@ -282,7 +282,7 @@
       </div>
     {:else}
       {#each friendList as friend (friend.id)}
-        <div class="friend-card">
+        <div class="friend-card" style={friend.accentColor ? `background: linear-gradient(to right, ${friend.accentColor}30, #1a1a1f)` : ''}>
           <div class="friend-avatar" onclick={() => openMessageModal(friend)} style="cursor: pointer;">
             {#if friend.avatarUrl}
               <img src={getUploadUrl(friend.avatarUrl)} alt={friend.username} class="avatar-img" />

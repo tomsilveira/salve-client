@@ -297,6 +297,25 @@
         Salvar Informações
       </button>
 
+      <div class="card-preview-section">
+        <label>Prévia do card</label>
+        <div class="card-preview" style={accentColor && accentColor !== '#0099ff' ? `background: linear-gradient(to right, ${accentColor}40, #1a1a1f)` : 'background: #1a1a1f'}>
+          <div class="card-preview-avatar">
+            {#if $user?.avatarUrl}
+              <img src="{getAvatarDisplayUrl($user.avatarUrl)}" alt="avatar" />
+            {:else}
+              <span>{nickname?.[0]?.toUpperCase() || '?'}</span>
+            {/if}
+          </div>
+          <div class="card-preview-info">
+            <span class="card-preview-name">{nickname || 'Username'}</span>
+            <span class="card-preview-status">Online</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="room-bottom">
       <button class="btn-logout" onclick={handleLogout}>
         Sair da conta
       </button>
@@ -416,6 +435,8 @@
     padding: 24px;
     overflow-y: auto;
     z-index: 1;
+    display: flex;
+    flex-direction: column;
   }
 
   .room-right {
@@ -439,6 +460,8 @@
     padding: 24px;
     max-width: 320px;
     margin: 0 auto;
+    width: 100%;
+    flex: 1;
   }
 
   .profile-card.animated-border {
@@ -690,6 +713,81 @@
   .btn-logout:hover {
     background: #ff454a;
     color: white;
+  }
+
+  .card-preview-section {
+    margin-top: 12px;
+  }
+
+  .card-preview-section label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #8e9297;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .card-preview {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #2a2b2f;
+    aspect-ratio: 6 / 1;
+    max-width: 280px;
+  }
+
+  .card-preview-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50% 50% 15% 50%;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #2a2b2f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .card-preview-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50% 50% 15% 50%;
+  }
+
+  .card-preview-avatar span {
+    font-size: 14px;
+    font-weight: 700;
+    color: #0099ff;
+  }
+
+  .card-preview-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .card-preview-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e4e6eb;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-preview-status {
+    font-size: 10px;
+    color: #8e9297;
+  }
+
+  .room-bottom {
+    padding: 16px 24px;
+    border-top: 1px solid #2a2b2f;
+    margin-top: auto;
   }
 
   .save-toast {

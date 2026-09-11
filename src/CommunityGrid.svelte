@@ -248,7 +248,7 @@ const friendList = $derived($friends);
     </div>
     <div class="friends-list">
       {#each friendList as friend (friend.id)}
-        <div class="friend-card">
+        <div class="friend-card" style={friend.accentColor ? `background: linear-gradient(to right, ${friend.accentColor}30, #1a1a1f)` : ''}>
           <div class="friend-avatar" oncontextmenu={(e) => handleUserContextMenu(e, friend)}>
             {#if friend.avatarUrl}
               <img src={getUploadUrl(friend.avatarUrl)} alt={friend.username} />

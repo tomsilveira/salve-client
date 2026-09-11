@@ -164,7 +164,7 @@ import UserContextMenu from './UserContextMenu.svelte';
   {#if channel.type === 'voice' && usersInChannel.length > 0}
     <div class="channel-members-list">
       {#each usersInChannel as user (user.id)}
-        <div class="channel-member-item" onclick={() => onSelect(channel)} title="{user.username} ({user.status || 'online'})">
+        <div class="channel-member-item" onclick={() => onSelect(channel)} title="{user.username} ({user.status || 'online'})" style={user.accentColor ? `background: linear-gradient(to right, ${user.accentColor}20, transparent)` : ''}>
           <div class="member-avatar" oncontextmenu={(e) => handleUserContextMenu(e, user)}>
             {#if user.avatarUrl}
               <img src={getAvatarDisplayUrl(user.avatarUrl)} alt={user.username} />

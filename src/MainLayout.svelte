@@ -571,7 +571,7 @@
       <div class="sidebar-members-section">
         <div class="sidebar-members-header">MEMBROS - {members.length}</div>
         {#each members as member (member.userId)}
-          <div class="sidebar-member" oncontextmenu={(e) => handleUserContextMenu(e, member.user)}>
+          <div class="sidebar-member" oncontextmenu={(e) => handleUserContextMenu(e, member.user)} style={member.user?.accentColor ? `background: linear-gradient(to right, ${member.user.accentColor}20, transparent); border-radius: 6px; padding: 6px 4px;` : ''}>
             <div class="sidebar-member-avatar">
               {#if member.user?.avatarUrl}
                 <img src="{getAvatarDisplayUrl(member.user.avatarUrl)}" alt={member.user.username} />
@@ -634,7 +634,7 @@
             {/each}
           {:else}
             {#each members as member (member.userId)}
-              <div class="user-card">
+              <div class="user-card" style={member.user?.accentColor ? `background: linear-gradient(to right, ${member.user.accentColor}30, #1a1a1f)` : ''}>
                 <div class="user-card-avatar" oncontextmenu={(e) => handleUserContextMenu(e, member.user)}>
                    {#if member.user?.avatarUrl}
                 <img src="{getAvatarDisplayUrl(member.user.avatarUrl)}" alt={member.user.username} />

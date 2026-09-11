@@ -111,6 +111,7 @@ export interface Friend {
   avatarUrl?: string;
   status: 'online' | 'offline' | 'away' | 'do-not-disturb' | 'invisible';
   activity?: string;
+  accentColor?: string;
 }
 
 export interface LiveStream {
