@@ -165,7 +165,7 @@
     <div class="modal-backdrop" onclick={() => showCreate = false}>
       <div class="create-modal" onclick={(e) => e.stopPropagation()}>
         <h3>Criar canal</h3>
-        <input type="text" placeholder="Nome do canal" bind:value={newChannelName} class="modal-input" />
+        <input type="text" placeholder="Nome do canal" bind:value={newChannelName} class="modal-input" maxlength="14" />
         <div class="type-selector">
           <label><input type="radio" bind:group={newChannelType} value="text" /> Texto</label>
           <label><input type="radio" bind:group={newChannelType} value="voice" /> Voz</label>

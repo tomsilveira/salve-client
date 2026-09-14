@@ -309,7 +309,7 @@
           </div>
           <div class="card-preview-info">
             <span class="card-preview-name">{nickname || 'Username'}</span>
-            <span class="card-preview-status">Online</span>
+            <span class="card-preview-status">{status === 'do-not-disturb' ? 'Ocupado' : status === 'away' ? 'Ausente' : status === 'invisible' || status === 'offline' ? 'Offline' : 'Online'}</span>
           </div>
         </div>
       </div>

@@ -58,7 +58,7 @@ import { getUploadUrl } from './lib/api';
               </div>
               <div class="friend-info">
                 <span class="friend-name">{friend.username}</span>
-                <span class="friend-status">{friend.status === 'away' ? 'Ausente' : friend.status === 'do-not-disturb' ? 'Ocupado' : friend.status === 'invisible' ? 'Invisível' : 'Online'}</span>
+                <span class="friend-status">{friend.status === 'away' ? 'Ausente' : friend.status === 'do-not-disturb' ? 'Ocupado' : friend.status === 'invisible' || friend.status === 'offline' ? 'Offline' : 'Online'}</span>
               </div>
               <button class="share-btn" onclick={() => shareToFriend(friend)}>
                 {#if sendingTo === friend.id}✓{:else}📤{/if}

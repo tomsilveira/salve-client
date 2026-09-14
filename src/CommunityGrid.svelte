@@ -12,9 +12,97 @@ const friendList = $derived($friends);
   let showCreateModal = $state(false);
   let hoveredServer: Server | null = $state(null);
   let errorMessage = $state('');
+  let loadingServers = $state(false);
   const serverMembers: Record<string, ServerMember[]> = {};
   const loadingMembers: Record<string, boolean> = {};
   let userContextMenu = $state<{ user: any; x: number; y: number } | null>(null);
+
+  let sortMode: 'manual' | 'alpha' | 'date' = $state(loadSortMode());
+  let dragIndex: number | null = $state(null);
+  let dragOverIndex: number | null = $state(null);
+
+  const STORAGE_KEY_ORDER = 'salve-server-order';
+
+  function loadSortMode(): 'manual' | 'alpha' | 'date' {
+    try { return (localStorage.getItem('salve-sort-mode') as any) || 'manual'; } catch { return 'manual'; }
+  }
+
+  function saveSortMode() {
+    try { localStorage.setItem('salve-sort-mode', sortMode); } catch {}
+  }
+
+  function loadOrder(): string[] {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY_ORDER) || '[]'); } catch { return []; }
+  }
+
+  function saveOrder(ids: string[]) {
+    try { localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(ids)); } catch {}
+  }
+
+  function applySort(list: Server[]): Server[] {
+    const copy = [...list];
+    if (sortMode === 'alpha') {
+      copy.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+    } else if (sortMode === 'date') {
+      copy.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else {
+      const order = loadOrder();
+      if (order.length > 0) {
+        copy.sort((a, b) => {
+          const ai = order.indexOf(a.id);
+          const bi = order.indexOf(b.id);
+          return (ai === -1 ? 9999 : ai) - (bi === -1 ? 9999 : bi);
+        });
+      }
+    }
+    return copy;
+  }
+
+  let sortedServers = $derived(applySort(serverList));
+
+  function setSortMode(mode: 'manual' | 'alpha' | 'date') {
+    sortMode = mode;
+    saveSortMode();
+  }
+
+  function handleDragStart(e: DragEvent, index: number) {
+    dragIndex = index;
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(index));
+    }
+  }
+
+  function handleDragOver(e: DragEvent, index: number) {
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+    dragOverIndex = index;
+  }
+
+  function handleDragLeave() {
+    dragOverIndex = null;
+  }
+
+  function handleDrop(e: DragEvent, toIndex: number) {
+    e.preventDefault();
+    const fromIndex = dragIndex;
+    dragIndex = null;
+    dragOverIndex = null;
+    if (fromIndex === null || fromIndex === toIndex) return;
+
+    const reordered = [...sortedServers];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+
+    const newIds = reordered.map(s => s.id);
+    saveOrder(newIds);
+    servers.set(reordered);
+  }
+
+  function handleDragEnd() {
+    dragIndex = null;
+    dragOverIndex = null;
+  }
 
   async function loadServerMembers(serverId: string) {
     if (serverMembers[serverId] || loadingMembers[serverId]) return;
@@ -44,6 +132,7 @@ const friendList = $derived($friends);
           avatarUrl: u.avatarUrl || u.avatar_url || '',
           status: u.status || 'offline',
           activity: '',
+          accentColor: u.accentColor || u.accent_color || '',
         }));
         friends.set(mapped);
       }
@@ -53,11 +142,16 @@ const friendList = $derived($friends);
   }
 
   async function loadServers() {
+    loadingServers = true;
+    errorMessage = '';
     try {
       const list = await api.getServers();
       servers.set(list);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to load servers', e);
+      errorMessage = e.message || 'Falha ao carregar comunidades. Verifique sua conexão.';
+    } finally {
+      loadingServers = false;
     }
   }
 
@@ -83,6 +177,10 @@ const friendList = $derived($friends);
         await api.deleteServer(server.id);
         serverList = serverList.filter((s) => s.id !== server.id);
         servers.set(serverList);
+        if (sortMode === 'manual') {
+          const order = loadOrder().filter(id => id !== server.id);
+          saveOrder(order);
+        }
       } catch (err: any) {
         console.error('Failed to delete server', err);
         errorMessage = err.message || 'Falha ao deletar servidor';
@@ -146,6 +244,11 @@ const friendList = $derived($friends);
       srv.bannerPosition = 'bottom';
       serverList = [...serverList, srv];
       servers.set(serverList);
+      if (sortMode === 'manual') {
+        const order = loadOrder();
+        order.push(srv.id);
+        saveOrder(order);
+      }
       showCreateModal = false;
     } catch (e: any) {
       console.error('Failed to create server', e);
@@ -158,17 +261,33 @@ const friendList = $derived($friends);
   <div class="community-main">
     <div class="community-header">
       <h2>Comunidades</h2>
-      <button class="btn-create" onclick={() => (showCreateModal = true)}>
-        + Criar comunidade
-      </button>
+      <div class="header-actions">
+        <div class="sort-controls">
+          <button class="sort-btn" class:active={sortMode === 'manual'} onclick={() => setSortMode('manual')} title="Ordem manual (arraste)">☰</button>
+          <button class="sort-btn" class:active={sortMode === 'alpha'} onclick={() => setSortMode('alpha')} title="Ordem alfabética">A-Z</button>
+          <button class="sort-btn" class:active={sortMode === 'date'} onclick={() => setSortMode('date')} title="Ordem por data">📅</button>
+        </div>
+        <button class="btn-create" onclick={() => (showCreateModal = true)}>
+          + Criar comunidade
+        </button>
+      </div>
     </div>
 
     {#if errorMessage}
-      <div class="error-banner">{errorMessage}</div>
+      <div class="error-banner">
+        <span>{errorMessage}</span>
+        <button class="error-retry-btn" onclick={() => loadServers()}>Tentar novamente</button>
+      </div>
     {/if}
 
+    {#if loadingServers}
+      <div class="loading-state">
+        <div class="loading-spinner"></div>
+        <span>Carregando comunidades...</span>
+      </div>
+    {:else}
     <div class="community-grid">
-      {#if serverList.length === 0}
+      {#if serverList.length === 0 && !errorMessage}
       <div
         class="community-card placeholder-card"
         onclick={() => (showCreateModal = true)}
@@ -180,8 +299,18 @@ const friendList = $derived($friends);
       </div>
       {/if}
 
-      {#each serverList as server (server.id)}
-        <div class="card-wrapper">
+      {#each sortedServers as server, i (server.id)}
+        <div
+          class="card-wrapper"
+          class:drag-over={dragOverIndex === i}
+          class:dragging={dragIndex === i}
+          draggable={sortMode === 'manual'}
+          ondragstart={(e) => handleDragStart(e, i)}
+          ondragover={(e) => handleDragOver(e, i)}
+          ondragleave={handleDragLeave}
+          ondrop={(e) => handleDrop(e, i)}
+          ondragend={handleDragEnd}
+        >
           <div
             class="community-card"
             onclick={() => handleServerClick(server)}
@@ -225,6 +354,7 @@ const friendList = $derived($friends);
         </div>
       {/each}
     </div>
+    {/if}
   </div>
 
   <div class="friends-sidebar">
@@ -514,6 +644,44 @@ const friendList = $derived($friends);
     display: flex;
     flex-direction: row;
     justify-content: space-between;
+    align-items: center;
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .sort-controls {
+    display: flex;
+    gap: 4px;
+    background: #1a1a1f;
+    border: 1px solid #2a2b2f;
+    border-radius: 8px;
+    padding: 3px;
+  }
+
+  .sort-btn {
+    padding: 4px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #8e9297;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .sort-btn:hover {
+    color: #e4e6eb;
+    background: #2a2b2f;
+  }
+
+  .sort-btn.active {
+    background: #0099ff;
+    color: white;
   }
 
   .community-header h2 {
@@ -538,17 +706,25 @@ const friendList = $derived($friends);
     background: #0080e0;
   }
 
-  .community-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 24px;
-    align-items: start;
-  }
-
   .card-wrapper {
     display: flex;
     flex-direction: column;
     align-items: center;
+    transition: transform 0.15s, opacity 0.15s;
+  }
+
+  .card-wrapper.dragging {
+    opacity: 0.4;
+    transform: scale(0.95);
+  }
+
+  .card-wrapper.drag-over .card-tab {
+    border-color: #00ff88;
+    box-shadow: 0 0 8px #00ff8840;
+  }
+
+  .card-wrapper.drag-over .community-card {
+    border-color: #00ff88;
   }
 
   .community-card {
@@ -745,5 +921,51 @@ const friendList = $derived($friends);
     padding: 10px 14px;
     font-size: 13px;
     margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .error-retry-btn {
+    padding: 5px 14px;
+    background: #ff454a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .error-retry-btn:hover {
+    background: #cc3338;
+  }
+
+  .loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 60px 20px;
+    color: #8e9297;
+    font-size: 14px;
+  }
+
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #2a2b2f;
+    border-top-color: #0099ff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 </style>

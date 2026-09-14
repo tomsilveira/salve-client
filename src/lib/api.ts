@@ -42,31 +42,41 @@ export function getAvatarDisplayUrl(path: string): string {
   return `${url}?t=${Date.now()}`;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}, retries = 2): Promise<T> {
   const t = get(token);
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...(t ? { Authorization: `Bearer ${t}` } : {}),
     ...(options.headers || {}),
   };
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
-  try {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers, signal: controller.signal });
-    clearTimeout(timeout);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'Request failed' }));
-      console.log('API error:', path, err);
-      throw new Error(err.error || `HTTP ${res.status}`);
+
+  let lastError: any;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    try {
+      const res = await fetch(`${API_BASE}${path}`, { ...options, headers, signal: controller.signal });
+      clearTimeout(timeout);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Request failed' }));
+        console.log('API error:', path, err);
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
+      return res.json();
+    } catch (e: any) {
+      clearTimeout(timeout);
+      lastError = e;
+      if (e.name === 'AbortError') {
+        lastError = new Error('Servidor demorou para responder. Tentando novamente...');
+      }
+      if (attempt < retries) {
+        const delay = 1000 * Math.pow(2, attempt);
+        console.warn(`[API] Retry ${attempt + 1}/${retries} for ${path} in ${delay}ms`);
+        await new Promise(r => setTimeout(r, delay));
+      }
     }
-    return res.json();
-  } catch (e: any) {
-    clearTimeout(timeout);
-    if (e.name === 'AbortError') {
-      throw new Error('Connection timeout - server not responding');
-    }
-    throw e;
   }
+  throw lastError;
 }
 
 export interface ApiResponse<T> {
@@ -196,6 +206,9 @@ export const api = {
 
   joinServer: (inviteCode: string) =>
     request<{ message: string }>('/servers/join', { method: 'POST', body: JSON.stringify({ inviteCode }) }),
+
+  getServerByInvite: (code: string) =>
+    request<Server>(`/servers/by-invite/${code}`),
 
   getServer: (id: string) =>
     request<Server>(`/servers/${id}`),

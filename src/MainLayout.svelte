@@ -39,7 +39,24 @@
   currentChannel.subscribe((c) => { selectedChannel = c; });
   channelTree.subscribe((ct) => { categories = ct.categories; channels = ct.channels; });
 
-  const voiceUsers = $derived($globalVoiceUsers);
+  let voiceUsers: Map<string, any[]> = $state(new Map());
+
+  $effect(() => {
+    voiceUsers = new Map($globalVoiceUsers);
+  });
+
+  function isUserInVoice(userId: string): string | null {
+    for (const [chId, uList] of $globalVoiceUsers) {
+      if (uList.some((u: any) => u.id === userId)) {
+        return chId;
+      }
+    }
+    return null;
+  }
+
+  function getVoiceChannelName(channelId: string): string {
+    return channels.find(c => c.id === channelId)?.name || 'Voz';
+  }
 
   function initGlobalSignal() {
     const u = get(user);
@@ -564,14 +581,15 @@
         </div>
         <div class="sidebar-user-info">
           <span class="sidebar-user-name">{$user?.username || 'User'}</span>
-          <span class="sidebar-user-status-text">{$user?.status === 'do-not-disturb' ? 'Ocupado' : $user?.status === 'away' ? 'Ausente' : 'Online'}</span>
+          <span class="sidebar-user-status-text">{$user?.status === 'do-not-disturb' ? 'Ocupado' : $user?.status === 'away' ? 'Ausente' : $user?.status === 'invisible' || $user?.status === 'offline' ? 'Offline' : 'Online'}</span>
         </div>
       </div>
 
       <div class="sidebar-members-section">
         <div class="sidebar-members-header">MEMBROS - {members.length}</div>
         {#each members as member (member.userId)}
-          <div class="sidebar-member" oncontextmenu={(e) => handleUserContextMenu(e, member.user)} style={member.user?.accentColor ? `background: linear-gradient(to right, ${member.user.accentColor}20, transparent); border-radius: 6px; padding: 6px 4px;` : ''}>
+          {@const voiceChannelId = isUserInVoice(member.userId)}
+          <div class="sidebar-member" class:in-voice={!!voiceChannelId} oncontextmenu={(e) => handleUserContextMenu(e, member.user)} style={member.user?.accentColor ? `background: linear-gradient(to right, ${member.user.accentColor}20, transparent); border-radius: 6px; padding: 6px 4px;` : ''}>
             <div class="sidebar-member-avatar">
               {#if member.user?.avatarUrl}
                 <img src="{getAvatarDisplayUrl(member.user.avatarUrl)}" alt={member.user.username} />
@@ -581,6 +599,9 @@
               <div class="sidebar-member-status" class:online={getMemberStatus(member) === 'online'} class:away={getMemberStatus(member) === 'away'} class:dnd={getMemberStatus(member) === 'do-not-disturb'}></div>
             </div>
             <span class="sidebar-member-name">{member.user?.username || 'Unknown'}</span>
+            {#if voiceChannelId}
+              <span class="sidebar-member-voice" title={getVoiceChannelName(voiceChannelId)}>🔊</span>
+            {/if}
           </div>
         {/each}
       </div>
@@ -604,55 +625,8 @@
       />
     </div>
 
-    <!-- RIGHT COLUMN: Member Cards + Chat -->
+    <!-- RIGHT COLUMN: Chat -->
     <div class="right-column">
-      <div class="user-cards">
-        <div class="user-cards-header">
-          {#if selectedChannel?.type === 'voice'}
-            <span>Na sala — {(voiceUsers.get(selectedChannel?.id || '') || []).length}</span>
-          {:else}
-            <span>Membros — {members.length}</span>
-          {/if}
-        </div>
-        <div class="user-cards-list">
-          {#if selectedChannel?.type === 'voice'}
-            {#each (voiceUsers.get(selectedChannel?.id || '') || []) as voiceUser (voiceUser.id)}
-              <div class="user-card" style={voiceUser.accentColor ? `background: linear-gradient(to right, ${voiceUser.accentColor}30, #1a1a1f)` : ''}>
-                <div class="user-card-avatar" oncontextmenu={(e) => handleUserContextMenu(e, voiceUser)}>
-                  {#if voiceUser.avatarUrl}
-                    <img src="{getAvatarDisplayUrl(voiceUser.avatarUrl)}" alt={voiceUser.username} />
-                  {:else}
-                    <span>{voiceUser.username?.[0]?.toUpperCase() || '?'}</span>
-                  {/if}
-                  <div class="user-status-dot" class:online={voiceUser.status === 'online'} class:away={voiceUser.status === 'away'} class:dnd={voiceUser.status === 'do-not-disturb'} class:offline={voiceUser.status === 'offline' || voiceUser.status === 'invisible'}></div>
-                </div>
-                <div class="user-card-info">
-                  <span class="user-card-name">{voiceUser.username || 'Unknown'}</span>
-                  <span class="user-card-role">{voiceUser.status || 'online'}</span>
-                </div>
-              </div>
-            {/each}
-          {:else}
-            {#each members as member (member.userId)}
-              <div class="user-card" style={member.user?.accentColor ? `background: linear-gradient(to right, ${member.user.accentColor}30, #1a1a1f)` : ''}>
-                <div class="user-card-avatar" oncontextmenu={(e) => handleUserContextMenu(e, member.user)}>
-                   {#if member.user?.avatarUrl}
-                <img src="{getAvatarDisplayUrl(member.user.avatarUrl)}" alt={member.user.username} />
-                   {:else}
-                     <span>{member.user?.username?.[0]?.toUpperCase() || '?'}</span>
-                   {/if}
-                   <div class="user-status-dot" class:online={getMemberStatus(member) === 'online'} class:away={getMemberStatus(member) === 'away'} class:dnd={getMemberStatus(member) === 'do-not-disturb'} class:offline={getMemberStatus(member) === 'invisible' || getMemberStatus(member) === 'offline'}></div>
-                </div>
-                <div class="user-card-info">
-                  <span class="user-card-name">{member.user?.username || 'Unknown'}</span>
-                  <span class="user-card-role">{member.role}</span>
-                </div>
-              </div>
-            {/each}
-          {/if}
-        </div>
-      </div>
-
       <main class="main-content">
         {#if selectedChannel && selectedChannel.type === 'text'}
           <MessageList {messages} {selectedChannel} currentUser={$user} onEdit={handleEditMessage} onDelete={handleDeleteMessage} />
@@ -748,7 +722,7 @@
     <div class="modal-backdrop" onclick={() => showCreateChannelModal = false}>
       <div class="create-modal" onclick={(e) => e.stopPropagation()}>
         <h3>Criar canal</h3>
-        <input type="text" placeholder="Nome do canal" bind:value={newChannelName} class="modal-input" />
+        <input type="text" placeholder="Nome do canal" bind:value={newChannelName} class="modal-input" maxlength="14" />
         <div class="type-selector">
           <label><input type="radio" bind:group={newChannelType} value="text" /> Texto</label>
           <label><input type="radio" bind:group={newChannelType} value="voice" /> Voz</label>
@@ -1036,6 +1010,19 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    flex: 1;
+  }
+
+  .sidebar-member.in-voice {
+    background: rgba(0, 255, 136, 0.08);
+    border-radius: 6px;
+    padding: 6px 4px;
+  }
+
+  .sidebar-member-voice {
+    font-size: 11px;
+    flex-shrink: 0;
+    opacity: 0.7;
   }
 
   .channels-column {

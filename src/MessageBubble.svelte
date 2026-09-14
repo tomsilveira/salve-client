@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Message } from './lib/types';
-  import { getAvatarDisplayUrl } from './lib/api';
+  import { getAvatarDisplayUrl, api } from './lib/api';
 
   const { msg, currentUser, onEdit, onDelete } = $props();
 
@@ -13,6 +13,22 @@
 
   const inviteMatch = $derived(msg.content.match(/\?invite=([A-Za-z0-9-]+)/));
   const inviteCode = $derived(inviteMatch ? inviteMatch[1] : null);
+  let inviteServerName = $state('');
+  let inviteDismissed = $state(false);
+  let inviteLoading = $state(false);
+
+  $effect(() => {
+    if (inviteCode && !inviteServerName && !inviteLoading) {
+      inviteLoading = true;
+      api.getServerByInvite(inviteCode).then((server) => {
+        inviteServerName = server.name || 'Servidor';
+      }).catch(() => {
+        inviteServerName = 'Servidor';
+      }).finally(() => {
+        inviteLoading = false;
+      });
+    }
+  });
 
   function handleAcceptInvite(code: string) {
     window.location.href = `/?invite=${code}`;
@@ -75,16 +91,21 @@
         {#if msg.content}
           <div class="message-text">{msg.content}</div>
         {/if}
-        {#if inviteCode}
+        {#if inviteCode && !inviteDismissed}
           <div class="invite-card">
             <div class="invite-icon">🔗</div>
             <div class="invite-info">
               <span class="invite-label">Convite para servidor</span>
-              <span class="invite-code">{inviteCode}</span>
+              <span class="invite-server-name">{inviteLoading ? 'Carregando...' : inviteServerName}</span>
             </div>
-            <button class="invite-accept-btn" onclick={() => handleAcceptInvite(inviteCode)}>
-              Aceitar
-            </button>
+            <div class="invite-actions">
+              <button class="invite-accept-btn" onclick={() => handleAcceptInvite(inviteCode)}>
+                Aceitar
+              </button>
+              <button class="invite-decline-btn" onclick={() => inviteDismissed = true}>
+                Recusar
+              </button>
+            </div>
           </div>
         {/if}
         <div class="message-meta">
@@ -311,26 +332,32 @@
   }
 
   .invite-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: #e4e6eb;
-  }
-
-  .invite-code {
     font-size: 11px;
     color: #8e9297;
+  }
+
+  .invite-server-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e4e6eb;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
 
+  .invite-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
   .invite-accept-btn {
-    padding: 6px 16px;
+    padding: 6px 14px;
     border-radius: 6px;
     border: none;
     background: #23a559;
     color: white;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.15s;
@@ -339,5 +366,22 @@
 
   .invite-accept-btn:hover {
     background: #1a8c47;
+  }
+
+  .invite-decline-btn {
+    padding: 6px 14px;
+    border-radius: 6px;
+    border: 1px solid #2a2b2f;
+    background: transparent;
+    color: #8e9297;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .invite-decline-btn:hover {
+    border-color: #ff454a;
+    color: #ff454a;
   }
 </style>

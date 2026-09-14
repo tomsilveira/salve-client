@@ -2,8 +2,13 @@
   import { getUploadUrl } from './lib/api';
   import { globalVoiceUsers, activeVoiceChannel, voiceLeaveFn, currentServer, viewMode, currentChannel } from './lib/stores';
 
-  const voiceUsers = $derived($globalVoiceUsers);
+  let voiceUsers: Map<string, any[]> = $state(new Map());
   const channel = $derived($activeVoiceChannel);
+
+  $effect(() => {
+    voiceUsers = new Map($globalVoiceUsers);
+  });
+
   const channelUsers = $derived(channel ? (voiceUsers.get(channel.id) || []) : []);
   let lastServer: any = null;
 

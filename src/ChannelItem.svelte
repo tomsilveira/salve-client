@@ -134,6 +134,7 @@ import UserContextMenu from './UserContextMenu.svelte';
         onblur={saveEditName}
         onkeydown={(e) => { if (e.key === 'Enter') saveEditName(); if (e.key === 'Escape') editingName = false; }}
         onclick={(e) => e.stopPropagation()}
+        maxlength="14"
         autofocus
       />
     {:else}
@@ -164,23 +165,26 @@ import UserContextMenu from './UserContextMenu.svelte';
   {#if channel.type === 'voice' && usersInChannel.length > 0}
     <div class="channel-members-list">
       {#each usersInChannel as user (user.id)}
-        <div class="channel-member-item" onclick={() => onSelect(channel)} title="{user.username} ({user.status || 'online'})" style={user.accentColor ? `background: linear-gradient(to right, ${user.accentColor}20, transparent)` : ''}>
-          <div class="member-avatar" oncontextmenu={(e) => handleUserContextMenu(e, user)}>
+        <div class="voice-user-card" onclick={() => onSelect(channel)} title="{user.username} ({user.status || 'online'})" style={user.accentColor ? `border-left: 2px solid ${user.accentColor}; background: linear-gradient(to right, ${user.accentColor}10, transparent);` : ''}>
+          <div class="voice-card-avatar" oncontextmenu={(e) => handleUserContextMenu(e, user)}>
             {#if user.avatarUrl}
               <img src={getAvatarDisplayUrl(user.avatarUrl)} alt={user.username} />
             {:else}
               <span>{user.username?.[0]?.toUpperCase() || '?'}</span>
             {/if}
             <div
-              class="member-status-dot"
+              class="voice-card-status"
               class:online={user.status === 'online' || !user.status}
               class:away={user.status === 'away'}
               class:dnd={user.status === 'do-not-disturb'}
               class:offline={user.status === 'invisible' || user.status === 'offline'}
             ></div>
           </div>
-          <span class="member-username">{user.username}</span>
-          <span class="speaking-indicator">🎙</span>
+          <div class="voice-card-info">
+            <span class="voice-card-name">{user.username}</span>
+            <span class="voice-card-status-text">{user.status === 'online' || !user.status ? 'Falando' : user.status === 'away' ? 'Ausente' : user.status === 'do-not-disturb' ? 'Não perturbe' : 'Offline'}</span>
+          </div>
+          <span class="voice-card-indicator">🎙</span>
         </div>
       {/each}
     </div>
@@ -345,75 +349,91 @@ import UserContextMenu from './UserContextMenu.svelte';
     margin-bottom: 4px;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
   }
 
-  .channel-member-item {
+  .voice-user-card {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 3px 8px;
-    border-radius: 4px;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    border: 1px solid #2a2b2f;
     cursor: pointer;
-    font-size: 12px;
-    color: #b9bbbe;
-    transition: background 0.15s, color 0.15s;
+    transition: all 0.15s;
   }
 
-  .channel-member-item:hover {
+  .voice-user-card:hover {
     background: #1c1d23;
-    color: #ffffff;
+    border-color: #3a3b3f;
   }
 
-  .member-avatar {
-    width: 18px;
-    height: 18px;
+  .voice-card-avatar {
+    width: 26px;
+    height: 26px;
     border-radius: 50% 50% 15% 50%;
     background: #2a2b2f;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 700;
     color: #0099ff;
     position: relative;
     flex-shrink: 0;
+    overflow: hidden;
   }
 
-  .member-avatar img {
+  .voice-card-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
     border-radius: 50% 50% 15% 50%;
   }
 
-  .member-status-dot {
+  .voice-card-status {
     position: absolute;
     bottom: 4%;
     right: 4%;
-    width: 6px;
-    height: 6px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    border: 1px solid #111116;
+    border: 1.5px solid #1a1b1e;
     background: #5a5a6a;
   }
 
-  .member-status-dot.online { background: #00ff88; }
-  .member-status-dot.away { background: #ffd700; }
-  .member-status-dot.dnd { background: #ff454a; }
-  .member-status-dot.offline { background: #5a5a6a; }
+  .voice-card-status.online { background: #00ff88; }
+  .voice-card-status.away { background: #ffd700; }
+  .voice-card-status.dnd { background: #ff454a; }
+  .voice-card-status.offline { background: #5a5a6a; }
 
-  .member-username {
+  .voice-card-info {
     flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .voice-card-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #e4e6eb;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .speaking-indicator {
+  .voice-card-status-text {
     font-size: 10px;
-    color: #8e9297;
-    opacity: 0.6;
+    color: #00ff88;
+  }
+
+  .voice-card-indicator {
+    font-size: 10px;
+    color: #00ff88;
+    opacity: 0.7;
+    flex-shrink: 0;
   }
 
   .channel-name-input {

@@ -51,6 +51,7 @@
           avatarUrl: u.avatarUrl || u.avatar_url || '',
           status: u.status || 'offline',
           activity: '',
+          accentColor: u.accentColor || u.accent_color || '',
         }));
         friends.set(mapped);
       }

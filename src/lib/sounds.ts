@@ -1,12 +1,21 @@
-function getAudio(path: string): HTMLAudioElement {
-  const a = new Audio(path);
-  a.volume = 0.5;
-  return a;
+let audioUnlocked = false;
+
+export function unlockAudio() {
+  if (audioUnlocked) return;
+  try {
+    const a = new Audio();
+    a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+    a.volume = 0.0;
+    a.play().then(() => {
+      audioUnlocked = true;
+    }).catch(() => {});
+  } catch {}
 }
 
 function play(path: string) {
   try {
-    const a = getAudio(path);
+    const a = new Audio(path);
+    a.volume = 0.5;
     a.play().catch((e) => console.warn('[Sound] play failed:', path, e));
   } catch (e) {
     console.warn('[Sound] error:', path, e);

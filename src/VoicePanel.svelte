@@ -4,7 +4,7 @@
   import type { Channel, VoicePeer } from './lib/types';
   import type { SignalClient } from './lib/signal';
 import { liveStreams, connectedPeers, localVoiceStream, noiseSuppressionEnabled, inputDeviceId, outputDeviceId, remoteScreenStreams as remoteScreenStreamsStore, speakingUsers, screenShareStopFn } from './lib/stores';
-import { playScreenStartSound, playScreenStopSound } from './lib/sounds';
+import { playScreenStartSound, playScreenStopSound, unlockAudio } from './lib/sounds';
 import { micState } from './lib/micState';
 import { getUploadUrl, getAvatarDisplayUrl } from './lib/api';
 import { startMicrophoneAnalysis, stopMicrophoneAnalysis, isSpeaking } from './lib/microphone';
@@ -57,18 +57,23 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      // TODO: Production TURN requires a dedicated service (e.g., Twilio, metered.ca).
-      // Render does not expose port 3478. Uncomment below when TURN is available.
-      // {
-      //   urls: `turn:${turnHost}:3478?transport=udp`,
-      //   username: 'salve',
-      //   credential: 'salve-turn-2024'
-      // },
-      // {
-      //   urls: `turn:${turnHost}:3478?transport=tcp`,
-      //   username: 'salve',
-      //   credential: 'salve-turn-2024'
-      // }
+      { urls: 'stun:stun2.l.google.com:19302' },
+      {
+        urls: [
+          'turn:openrelay.metered.ca:80?transport=udp',
+          'turn:openrelay.metered.ca:80?transport=tcp',
+        ],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
+      {
+        urls: [
+          'turn:openrelay.metered.ca:443?transport=tcp',
+          'turns:openrelay.metered.ca:443?transport=tcp',
+        ],
+        username: 'openrelayproject',
+        credential: 'openrelayproject',
+      },
     ],
     iceCandidatePoolSize: 10
   };
@@ -79,6 +84,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       existingPc.close();
       peerConnections.delete(peerId);
     }
+    renegotiatePending.delete(peerId);
 
     const pc = new RTCPeerConnection(RTC_CONFIG);
     peerConnections.set(peerId, pc);
@@ -130,6 +136,11 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       });
 
       if (track.kind === 'audio') {
+        const isScreenAudio = remoteStream?.getVideoTracks().length > 0;
+        if (isScreenAudio) {
+          screenAudioPeers = new Set([...screenAudioPeers, peerId]);
+          console.log('[VoicePanel] Screen audio detected from', peerId);
+        }
         remoteStreams.set(peerId, remoteStream);
         let audio = document.getElementById(`audio-${peerId}`) as HTMLAudioElement;
         const existed = !!audio;
@@ -141,6 +152,9 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
           document.body.appendChild(audio);
         }
         audio.srcObject = remoteStream;
+        if (screenMuted.has(peerId)) {
+          audio.muted = true;
+        }
         if ($outputDeviceId !== 'default' && typeof (audio as any).setSinkId === 'function') {
           (audio as any).setSinkId($outputDeviceId).catch(() => {});
         }
@@ -214,14 +228,37 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
 
     if (signal.type === 'offer') {
       let pc = peerConnections.get(from);
-      if (pc && pc.signalingState !== 'closed') {
+      renegotiatePending.delete(from);
+      if (pc && pc.signalingState === 'have-local-offer') {
+        console.log('[Signal] Glare: both sides sent offers to', from, 'userId:', userId, 'remote:', from);
+        if (userId > from) {
+          console.log('[Signal] Higher ID - backing off, rolling back local offer and accepting remote offer');
+          try {
+            await pc.setLocalDescription({ type: 'rollback' });
+            await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            signalClient?.sendSignal(from, channelId, { type: 'answer', answer });
+          } catch (e) {
+            console.error('[Signal] Failed to handle glare (rollback path)', e);
+            pc.close();
+            peerConnections.delete(from);
+            await ensureLocalStream();
+            pc = await createPeerConnection(from, channelId, false);
+            await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            signalClient?.sendSignal(from, channelId, { type: 'answer', answer });
+          }
+        } else {
+          console.log('[Signal] Lower ID - ignoring remote offer, keeping local offer');
+        }
+      } else if (pc && pc.signalingState !== 'closed') {
         console.log('[Signal] Renegotiation offer from', from, 'current state:', pc.signalingState);
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
-          console.log('[Signal] Renegotiation SDP has video:', signal.data?.sdp?.includes('m=video'));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
-          console.log('[Signal] Renegotiation answer has video:', answer.sdp?.includes('m=video'));
           signalClient?.sendSignal(from, channelId, { type: 'answer', answer });
         } catch (e) {
           console.error('[Signal] Failed to handle renegotiation offer from', from, e);
@@ -250,6 +287,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       }
     } else if (signal.type === 'answer') {
       const pc = peerConnections.get(from);
+      renegotiatePending.delete(from);
       if (pc && pc.signalingState === 'have-local-offer') {
         try {
           console.log('Received answer SDP has video:', signal.data?.sdp?.includes('m=video'));
@@ -280,6 +318,10 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         screenUpdateCounter++;
         featuredScreen = featuredScreen === from ? null : featuredScreen;
         cleanupRemoteAudio(from);
+        screenAudioPeers.delete(from);
+        screenAudioPeers = new Set(screenAudioPeers);
+        screenMuted.delete(from);
+        screenMuted = new Set(screenMuted);
         console.log('[ScreenShare] Cleaned up remote screen for:', from);
       }
     } else if (signal.type === 'ice-candidate') {
@@ -325,6 +367,9 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     syncScreenStreamsToStore();
     screenAttachedEls.clear();
     screenPlayState.clear();
+    screenAudioPeers = new Set();
+    screenMuted = new Set();
+    renegotiatePending.clear();
   }
 
   const memberMap = $derived(new Map(members.map((m) => [m.userId, m.user])));
@@ -538,6 +583,37 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
   let screenAudioActive = $state(false);
   let audioContext: AudioContext | null = $state(getAudioContext());
   let mixedAudioDestination: MediaStreamAudioDestinationNode | null = $state(getMixedAudioDestination());
+  let fullscreenPeerId: string | null = $state(null);
+  let screenAudioPeers: Set<string> = $state(new Set());
+  let screenMuted: Set<string> = $state(new Set());
+
+  function toggleScreenFullscreen(peerId: string) {
+    const videoEl = videoEls[peerId];
+    if (!videoEl) return;
+    if (fullscreenPeerId === peerId) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen();
+      }
+      fullscreenPeerId = null;
+    } else {
+      videoEl.requestFullscreen();
+      fullscreenPeerId = peerId;
+    }
+  }
+
+  function toggleScreenMute(peerId: string) {
+    const audio = document.getElementById(`audio-${peerId}`) as HTMLAudioElement;
+    if (!audio) return;
+    const newMuted = new Set(screenMuted);
+    if (newMuted.has(peerId)) {
+      newMuted.delete(peerId);
+      audio.muted = false;
+    } else {
+      newMuted.add(peerId);
+      audio.muted = true;
+    }
+    screenMuted = newMuted;
+  }
 
   function syncScreenStreamsToStore() {
     remoteScreenStreamsStore.set(new Map(remoteScreenStreams));
@@ -596,12 +672,14 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       console.log('Screen share already in progress');
       return;
     }
+    unlockAudio();
     try {
       screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
       setSharedScreenStream(screenStream);
       screenAudioActive = screenStream.getAudioTracks().length > 0;
       console.log('[ScreenShare] Audio tracks:', screenStream.getAudioTracks().length, 'audio active:', screenAudioActive);
       screenSharing = true;
+      playScreenStartSound();
       screenShareStopFn.set(stopScreenShare);
       await tick();
       if (localScreen) {
@@ -627,18 +705,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
           pc.addTrack(track, screenStream!);
         });
         console.log('Screen track added to existing PC for', peerId, 'state:', pc.signalingState);
-        if (pc.signalingState === 'stable') {
-          renegotiate(peerId, pc);
-        } else {
-          console.log('[ScreenShare] PC not stable for', peerId, 'state:', pc.signalingState, 'waiting for stable to renegotiate');
-          const onStateChange = () => {
-            if (pc.signalingState === 'stable') {
-              pc.removeEventListener('signalingstatechange', onStateChange);
-              renegotiate(peerId, pc);
-            }
-          };
-          pc.addEventListener('signalingstatechange', onStateChange);
-        }
+        renegotiate(peerId, pc);
       }
     } catch (e) {
       console.error('Screen share failed', e);
@@ -647,7 +714,37 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     }
   }
 
+  let renegotiatePending: Map<string, boolean> = new Map();
+
   async function renegotiate(peerId: string, pc: RTCPeerConnection) {
+    const state = pc.signalingState;
+    if (state === 'closed') {
+      console.log('[Renegotiate] Skipping - PC closed for', peerId);
+      return;
+    }
+    if (state === 'stable') {
+      renegotiatePending.delete(peerId);
+      await doRenegotiate(peerId, pc);
+      return;
+    }
+    if (renegotiatePending.has(peerId)) {
+      console.log('[Renegotiate] Already waiting for stable for', peerId);
+      return;
+    }
+    renegotiatePending.set(peerId, true);
+    console.log('[Renegotiate] Waiting for stable, current:', state, 'for', peerId);
+    const handler = () => {
+      if (pc.signalingState === 'stable') {
+        pc.removeEventListener('signalingstatechange', handler);
+        renegotiatePending.delete(peerId);
+        doRenegotiate(peerId, pc);
+      }
+    };
+    pc.addEventListener('signalingstatechange', handler);
+  }
+
+  async function doRenegotiate(peerId: string, pc: RTCPeerConnection) {
+    if (pc.signalingState !== 'stable') return;
     try {
       const offer = await pc.createOffer({ iceRestart: false });
       await pc.setLocalDescription(offer);
@@ -665,6 +762,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
   }
 
   function stopScreenShare() {
+    playScreenStopSound();
     const oldScreenTracks = screenStream ? screenStream.getTracks() : [];
     stopMixedAudio();
     if (screenStream) {
@@ -814,7 +912,14 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
       startMicrophoneAnalysis();
     }
     setupCallbacks();
+    document.addEventListener('fullscreenchange', onFullscreenChange);
   });
+
+  function onFullscreenChange() {
+    if (!document.fullscreenElement) {
+      fullscreenPeerId = null;
+    }
+  }
 
   function setupCallbacks() {
     if (!signalClient || callbacksSetup) return;
@@ -868,6 +973,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         newMap.delete(uid);
         return newMap;
       });
+      renegotiatePending.delete(uid);
       const pc = peerConnections.get(uid);
       if (pc) {
         pc.close();
@@ -953,6 +1059,10 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
   onDestroy(() => {
     stopMicrophoneAnalysis();
     cleanupPeerConnections();
+    document.removeEventListener('fullscreenchange', onFullscreenChange);
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
   });
 </script>
 
@@ -1061,7 +1171,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
                 <div class="preview-card-details">
                   <span class="preview-card-username">{user.username}</span>
                   <span class="preview-card-status-text">
-                    {userStatus === 'away' ? 'Ausente' : userStatus === 'do-not-disturb' ? 'Ocupado' : userStatus === 'invisible' ? 'Invisível' : 'Online'}
+                    {userStatus === 'away' ? 'Ausente' : userStatus === 'do-not-disturb' ? 'Ocupado' : userStatus === 'invisible' || userStatus === 'offline' ? 'Offline' : 'Online'}
                   </span>
                 </div>
               </div>
@@ -1082,7 +1192,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         {#each remoteScreenEntries as [peerId, stream] (peerId)}
           {@const peer = peers.get(peerId)}
           {@const isExpanded = expandedScreens.has(peerId)}
-          <button
+          <div
             class="remote-screen-container"
             class:featured={featuredScreen === peerId}
             class:expanded={isExpanded}
@@ -1094,22 +1204,48 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
                 featuredScreen = featuredScreen === peerId ? null : peerId;
               }
             }}
-            type="button"
+            role="button"
+            tabindex="0"
+            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') e.currentTarget.click(); }}
           >
             {#if isExpanded}
               <video class="remote-screen-video" autoplay playsinline use:setVideoEl={peerId}></video>
-              <button
-                class="screen-close-btn"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  expandedScreens = new Set([...expandedScreens].filter(id => id !== peerId));
-                  featuredScreen = featuredScreen === peerId ? null : featuredScreen;
-                  screenUpdateCounter++;
-                  cleanupRemoteAudio(peerId);
-                }}
-                type="button"
-                title="Fechar"
-              >✕</button>
+              <div class="screen-controls">
+                {#if screenAudioPeers.has(peerId)}
+                  <button
+                    class="screen-ctrl-btn"
+                    class:muted={screenMuted.has(peerId)}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      toggleScreenMute(peerId);
+                    }}
+                    type="button"
+                    title={screenMuted.has(peerId) ? 'Ativar áudio da tela' : 'Mutar áudio da tela'}
+                  >{screenMuted.has(peerId) ? '🔇' : '🔊'}</button>
+                {/if}
+                <button
+                  class="screen-ctrl-btn"
+                  class:active={fullscreenPeerId === peerId}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    toggleScreenFullscreen(peerId);
+                  }}
+                  type="button"
+                  title={fullscreenPeerId === peerId ? 'Sair da tela cheia' : 'Tela cheia'}
+                >{fullscreenPeerId === peerId ? '⊡' : '⛶'}</button>
+                <button
+                  class="screen-ctrl-btn close"
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    expandedScreens = new Set([...expandedScreens].filter(id => id !== peerId));
+                    featuredScreen = featuredScreen === peerId ? null : featuredScreen;
+                    screenUpdateCounter++;
+                    cleanupRemoteAudio(peerId);
+                  }}
+                  type="button"
+                  title="Fechar"
+                >✕</button>
+              </div>
             {:else}
               <div class="screen-placeholder">
                 <div class="screen-placeholder-avatar">
@@ -1126,7 +1262,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
               </div>
             {/if}
             <div class="remote-screen-label">{peer?.displayName || peer?.username || 'Unknown'}</div>
-          </button>
+          </div>
         {/each}
       </div>
     {/if}
@@ -1739,12 +1875,27 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     border-color: #0099ff;
     min-height: 180px;
   }
-  .screen-close-btn {
+
+  .screen-controls {
     position: absolute;
     top: 8px;
     right: 8px;
-    width: 28px;
-    height: 28px;
+    display: flex;
+    gap: 6px;
+    z-index: 3;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+  }
+
+  .remote-screen-container:hover .screen-controls {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .screen-ctrl-btn {
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     border: none;
     background: rgba(0, 0, 0, 0.7);
@@ -1755,11 +1906,25 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     align-items: center;
     justify-content: center;
     transition: all 0.15s;
-    z-index: 2;
+    backdrop-filter: blur(4px);
   }
-  .screen-close-btn:hover {
-    background: #ff453a;
+
+  .screen-ctrl-btn:hover {
+    background: rgba(0, 0, 0, 0.9);
     color: white;
+    transform: scale(1.1);
+  }
+
+  .screen-ctrl-btn.active {
+    background: rgba(0, 153, 255, 0.6);
+  }
+
+  .screen-ctrl-btn.muted {
+    background: rgba(255, 69, 74, 0.5);
+  }
+
+  .screen-ctrl-btn.close:hover {
+    background: #ff453a;
   }
   .screen-placeholder {
     display: flex;

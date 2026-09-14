@@ -30,6 +30,7 @@ function removeIcon() {
       placeholder="Nome do servidor"
       bind:value={name}
       class="modal-input"
+      maxlength="14"
     />
     <textarea
       placeholder="Descrição (opcional)"

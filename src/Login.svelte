@@ -87,6 +87,7 @@
           bind:value={username}
           class="input-field"
           autocomplete="username"
+          maxlength="14"
         />
       </div>
 
