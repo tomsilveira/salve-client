@@ -186,6 +186,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         playScreenStartSound();
         remoteScreenStreams.set(peerId, remoteStream);
         syncScreenStreamsToStore();
+        expandedScreens = new Set([...expandedScreens, peerId]);
         screenUpdateCounter++;
         track.onended = () => {
           console.log('[ScreenShare] Remote video track ended for', peerId);
@@ -220,6 +221,21 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     return pc;
   }
 
+  async function flushIceCandidates(peerId: string, pc: RTCPeerConnection) {
+    const queued = iceCandidateQueues.get(peerId);
+    if (queued && queued.length > 0) {
+      console.log('[ICE] Flushing', queued.length, 'queued candidates for', peerId);
+      for (const candidate of queued) {
+        try {
+          await pc.addIceCandidate(candidate);
+        } catch (e) {
+          console.error('[ICE] Failed to add queued candidate:', e);
+        }
+      }
+      iceCandidateQueues.delete(peerId);
+    }
+  }
+
   async function handleSignal(signal: any) {
     const from = signal.from;
     if (!from) return;
@@ -236,6 +252,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
           try {
             await pc.setLocalDescription({ type: 'rollback' });
             await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+            await flushIceCandidates(from, pc);
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             signalClient?.sendSignal(from, channelId, { type: 'answer', answer });
@@ -246,6 +263,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
             await ensureLocalStream();
             pc = await createPeerConnection(from, channelId, false);
             await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+            await flushIceCandidates(from, pc);
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
             signalClient?.sendSignal(from, channelId, { type: 'answer', answer });
@@ -257,6 +275,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         console.log('[Signal] Renegotiation offer from', from, 'current state:', pc.signalingState);
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+          await flushIceCandidates(from, pc);
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
           signalClient?.sendSignal(from, channelId, { type: 'answer', answer });
@@ -272,6 +291,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         try {
           pc = await createPeerConnection(from, channelId, false);
           await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+          await flushIceCandidates(from, pc);
           console.log('Received offer SDP has video:', signal.data?.sdp?.includes('m=video'));
           const answer = await pc.createAnswer();
           await pc.setLocalDescription(answer);
@@ -292,6 +312,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         try {
           console.log('Received answer SDP has video:', signal.data?.sdp?.includes('m=video'));
           await pc.setRemoteDescription(new RTCSessionDescription(signal.data));
+          await flushIceCandidates(from, pc);
         } catch (e: any) {
           console.warn('[Signal] Failed to set remote answer, retrying with ICE restart:', e.message);
           try {
@@ -330,14 +351,21 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         const sdpMid = signal.sdpMid != null ? signal.sdpMid : undefined;
         const sdpMLineIndex = signal.sdpMLineIndex != null ? signal.sdpMLineIndex : undefined;
         if (sdpMid !== undefined || sdpMLineIndex !== undefined) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate({
-              candidate: signal.data,
-              sdpMid: sdpMid,
-              sdpMLineIndex: sdpMLineIndex,
-            }));
-          } catch (e) {
-            console.error('Failed to add ICE candidate:', e);
+          const candidate: RTCIceCandidateInit = {
+            candidate: signal.data,
+            sdpMid: sdpMid,
+            sdpMLineIndex: sdpMLineIndex,
+          };
+          if (pc.remoteDescription) {
+            try {
+              await pc.addIceCandidate(candidate);
+            } catch (e) {
+              console.error('Failed to add ICE candidate:', e);
+            }
+          } else {
+            if (!iceCandidateQueues.has(from)) iceCandidateQueues.set(from, []);
+            iceCandidateQueues.get(from)!.push(candidate);
+            console.log('[ICE] Queued candidate for', from, '(no remote description yet)');
           }
         }
       }
@@ -370,6 +398,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
     screenAudioPeers = new Set();
     screenMuted = new Set();
     renegotiatePending.clear();
+    iceCandidateQueues.clear();
   }
 
   const memberMap = $derived(new Map(members.map((m) => [m.userId, m.user])));
@@ -388,6 +417,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
 
   const screenPlayState: Map<string, boolean> = new Map();
   const screenAttachedEls: Set<string> = new Set();
+  const iceCandidateQueues: Map<string, RTCIceCandidateInit[]> = new Map();
   let expandedScreens: Set<string> = $state(new Set());
   const hasExpandedScreen = $derived(expandedScreens.size > 0 || featuredScreen !== null);
 
@@ -403,34 +433,54 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
 
     const videoTrack = stream.getVideoTracks()[0];
     if (videoTrack) {
+      let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+      const checkVideoReady = () => {
+        if (el.videoWidth > 0 && el.videoHeight > 0) {
+          screenPlayState.set(peerId, true);
+          if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+          console.log('[ScreenVideo] Video ready for', peerId, el.videoWidth, 'x', el.videoHeight);
+          return true;
+        }
+        return false;
+      };
+
       const tryPlay = () => {
         if (screenPlayState.get(peerId)) return;
         el.play().then(() => {
-          screenPlayState.set(peerId, true);
-          console.log('[ScreenVideo] play() resolved for', peerId, 'readyState:', el.readyState, el.videoWidth, 'x', el.videoHeight);
+          console.log('[ScreenVideo] play() resolved for', peerId, 'readyState:', el.readyState, 'videoWidth:', el.videoWidth, 'videoHeight:', el.videoHeight);
+          checkVideoReady();
         }).catch((e) => {
           console.log('[ScreenVideo] play() failed for', peerId, e);
         });
       };
 
+      el.addEventListener('loadeddata', () => {
+        console.log('[ScreenVideo] loadeddata for', peerId, el.videoWidth, 'x', el.videoHeight);
+        checkVideoReady();
+        tryPlay();
+      });
+
       tryPlay();
 
-      if (videoTrack.muted) {
-        console.log('[ScreenVideo] Track muted, polling for unmute for', peerId);
-        videoTrack.addEventListener('unmute', () => {
-          console.log('[ScreenVideo] Track unmuted for', peerId);
+      pollInterval = setInterval(() => {
+        if (screenPlayState.get(peerId)) {
+          if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+          return;
+        }
+        if (!videoTrack.muted) {
           tryPlay();
-        }, { once: true });
-        const pollInterval = setInterval(() => {
-          if (!videoTrack.muted || screenPlayState.get(peerId)) {
-            clearInterval(pollInterval);
-            tryPlay();
-          }
-        }, 500);
-        videoTrack.addEventListener('ended', () => clearInterval(pollInterval));
-      }
+        }
+        checkVideoReady();
+      }, 500);
+
+      videoTrack.addEventListener('unmute', () => {
+        console.log('[ScreenVideo] Track unmuted for', peerId);
+        tryPlay();
+      }, { once: true });
 
       videoTrack.addEventListener('ended', () => {
+        if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
         console.log('[ScreenVideo] Track ended for', peerId);
         screenPlayState.delete(peerId);
       });
@@ -974,6 +1024,7 @@ import { getPeerConnections, getRemoteStreams, setScreenStream as setSharedScree
         return newMap;
       });
       renegotiatePending.delete(uid);
+      iceCandidateQueues.delete(uid);
       const pc = peerConnections.get(uid);
       if (pc) {
         pc.close();
